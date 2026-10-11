@@ -14,7 +14,7 @@
   <!-- SheetJS Excel 匯出套件 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <!-- Firebase 兼容版 SDK -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -53,7 +53,6 @@
             <button @click="currentTab = 'incidents'" :class="currentTab === 'incidents' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📋 課堂紀錄</button>
           </nav>
 
-          <!-- Excel 匯出、暗黑切換、登出 -->
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-medium shadow">📊 匯出 Excel</button>
           <button @click="toggleDarkMode()" class="bg-indigo-800 dark:bg-indigo-700 p-2 rounded-lg text-sm hover:bg-indigo-700 transition">
             <span x-text="isDarkMode ? '☀️' : '🌙'"></span>
@@ -66,7 +65,7 @@
     <!-- 主內容區 -->
     <main class="max-w-7xl mx-auto px-4 py-6">
       
-      <!-- 班別選擇與班別管理按鈕 -->
+      <!-- 班別選擇、分數開關與班別管理 -->
       <div class="mb-6 flex flex-wrap items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 gap-3">
         <div class="flex items-center space-x-2">
           <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">當前班別：</span>
@@ -76,10 +75,105 @@
                     class="px-3.5 py-1 rounded-lg font-medium text-sm transition" x-text="cls"></button>
           </template>
         </div>
-        <button @click="showClassModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg font-medium">⚙️ 班別管理</button>
+
+        <div class="flex items-center space-x-3">
+          <!-- 手動開啟功課分數功能 -->
+          <label class="flex items-center space-x-2 text-xs font-medium cursor-pointer bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg">
+            <input type="checkbox" x-model="enableHwsScores" @change="saveDataToFirebase()" class="rounded text-indigo-600 focus:ring-0">
+            <span>開啟功課分數登記</span>
+          </label>
+          <button @click="showClassModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 px-3 py-1.5 rounded-lg font-medium">⚙️ 班別管理</button>
+        </div>
       </div>
 
-      <!-- 1. 學生整體總覽 (修復 Tooltip 遮擋與學號排序) -->
+      <!-- 1. 按功課管理 (恢復舊版功能：選擇功課 + 一鍵切換學生狀態 + 分數輸入 + 順序調整) -->
+      <div x-show="currentTab === 'homework'" class="space-y-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+          <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+            <div class="flex items-center space-x-3">
+              <h2 class="text-lg font-bold">功課清單</h2>
+              <button @click="addHomeworkPrompt()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md font-medium">+ 新增功課</button>
+            </div>
+          </div>
+
+          <!-- 功課卡片列表 (帶順序調整按鈕 ⬆️ ⬇️) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <template x-for="(hw, hIdx) in currentHomeworks" :key="hw.id">
+              <div @click="selectedHomeworkId = hw.id"
+                   :class="selectedHomeworkId === hw.id ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30'"
+                   class="p-3 rounded-xl border cursor-pointer transition flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-mono bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-bold" x-text="`#${hIdx + 1}`"></span>
+                  <p class="font-bold text-sm mt-1" x-text="hw.title"></p>
+                </div>
+                <div class="flex items-center space-x-1" @click.stop>
+                  <button @click="moveHomework(hIdx, -1)" :disabled="hIdx === 0" class="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 text-xs">⬆️</button>
+                  <button @click="moveHomework(hIdx, 1)" :disabled="hIdx === currentHomeworks.length - 1" class="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 text-xs">⬇️</button>
+                  <button @click="deleteHomework(hw.id)" class="text-xs text-red-500 hover:underline ml-1">刪除</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- 當前選中功課的學生批改狀態表格 -->
+        <template x-if="getSelectedHomework()">
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+            <h3 class="font-bold text-md mb-3 flex items-center space-x-2">
+              <span>📝 正在登記：</span>
+              <span class="text-indigo-600 dark:text-indigo-400" x-text="getSelectedHomework().title"></span>
+            </h3>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead>
+                  <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                    <th class="py-2 px-3">學號</th>
+                    <th class="py-2 px-3">姓名</th>
+                    <th class="py-2 px-3">繳交狀態 (點擊快速切換)</th>
+                    <template x-if="enableHwsScores">
+                      <th class="py-2 px-3">功課分數</th>
+                    </template>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="student in getSortedStudents()" :key="student.id">
+                    <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                      <td class="py-2.5 px-3 font-mono text-slate-500" x-text="student.no || '-'"></td>
+                      <td class="py-2.5 px-3 font-medium" x-text="student.name"></td>
+                      <td class="py-2.5 px-3">
+                        <!-- 狀態切換按鈕 (已交 / 待改正 / 未交) -->
+                        <div class="flex items-center space-x-2">
+                          <button @click="setStatus(student.id, selectedHomeworkId, 'submitted')"
+                                  :class="getStatus(student.id, selectedHomeworkId) === 'submitted' ? 'bg-emerald-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-emerald-100'"
+                                  class="px-2.5 py-1 rounded-md text-xs font-medium transition">🟢 已交</button>
+                          <button @click="setStatus(student.id, selectedHomeworkId, 'correction')"
+                                  :class="getStatus(student.id, selectedHomeworkId) === 'correction' ? 'bg-amber-500 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-amber-100'"
+                                  class="px-2.5 py-1 rounded-md text-xs font-medium transition">🟡 待改正</button>
+                          <button @click="setStatus(student.id, selectedHomeworkId, 'missing')"
+                                  :class="getStatus(student.id, selectedHomeworkId) === 'missing' ? 'bg-red-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-red-100'"
+                                  class="px-2.5 py-1 rounded-md text-xs font-medium transition">🔴 未交</button>
+                        </div>
+                      </td>
+                      <template x-if="enableHwsScores">
+                        <td class="py-2.5 px-3">
+                          <input type="number" 
+                                 :value="getScore(student.id, selectedHomeworkId)"
+                                 @change="setScore(student.id, selectedHomeworkId, $event.target.value)"
+                                 placeholder="分數" 
+                                 class="w-20 px-2 py-1 border rounded text-sm dark:bg-slate-700 dark:border-slate-600">
+                        </td>
+                      </template>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- 2. 學生整體總覽 (Tooltip z-50 遮擋修復 + 編輯與批量新增學生) -->
       <div x-show="currentTab === 'overview'" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-lg font-bold" x-text="`${currentClass} 班學生交功課整體情況`"></h2>
@@ -105,7 +199,7 @@
                   <td class="py-2.5 px-3 relative group">
                     <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 cursor-pointer"
                           x-text="getMissingHomeworks(student.id).length"></span>
-                    <div class="hidden group-hover:block absolute left-0 top-full mt-1 w-48 bg-slate-900 text-white text-xs rounded-lg p-2.5 shadow-xl z-50 pointer-events-none">
+                    <div class="hidden group-hover:block absolute left-0 top-full mt-1 w-52 bg-slate-900 text-white text-xs rounded-lg p-2.5 shadow-2xl z-50 pointer-events-none">
                       <p class="font-bold border-b border-slate-700 pb-1 mb-1">未交功課清單：</p>
                       <template x-if="getMissingHomeworks(student.id).length === 0">
                         <p class="text-slate-400">已全部繳交 ✨</p>
@@ -125,38 +219,21 @@
         </div>
       </div>
 
-      <!-- 2. 按功課管理 (包含順序調整) -->
-      <div x-show="currentTab === 'homework'" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-lg font-bold">功課清單與排序</h2>
-          <button @click="addHomeworkPrompt()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md font-medium">+ 新增功課</button>
-        </div>
-
-        <div class="space-y-2">
-          <template x-for="(hw, hIdx) in currentHomeworks" :key="hw.id">
-            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div class="flex items-center space-x-3">
-                <span class="text-xs font-mono bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300" x-text="`#${hIdx + 1}`"></span>
-                <span class="font-medium" x-text="hw.title"></span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <button @click="moveHomework(hIdx, -1)" :disabled="hIdx === 0" class="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30">⬆️</button>
-                <button @click="moveHomework(hIdx, 1)" :disabled="hIdx === currentHomeworks.length - 1" class="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30">⬇️</button>
-                <button @click="deleteHomework(hw.id)" class="text-xs text-red-500 hover:underline ml-2">刪除</button>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- 3. 測驗成績分析 (自訂及格率/等級與百分比平均分) -->
-      <div x-show="currentTab === 'quiz'" class="space-y-5">
+      <!-- 3. 測驗成績分析 (儀表板 + 恢復學生測驗成績登記表) -->
+      <div x-show="currentTab === 'quiz'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
           <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-            <h2 class="text-lg font-bold">整體成績分析儀表板</h2>
+            <div class="flex items-center space-x-3">
+              <h2 class="text-lg font-bold">整體成績分析儀表板</h2>
+              <div class="flex items-center space-x-1 text-xs">
+                <span class="text-slate-500">測驗滿分：</span>
+                <input type="number" x-model.number="quizMaxScore" @change="saveDataToFirebase()" class="w-16 px-2 py-0.5 border rounded text-xs dark:bg-slate-700">
+              </div>
+            </div>
             <button @click="showQuizConfigModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-md font-medium">⚙️ 設定合格與等級標準</button>
           </div>
 
+          <!-- 數據指標卡片 (顯示百分比平均分) -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
               <p class="text-xs text-indigo-500 font-medium">全班平均分</p>
@@ -200,6 +277,39 @@
               <p class="text-lg font-bold mt-1" x-text="`${quizStats.grades.fail} 人`"></p>
             </div>
           </div>
+        </div>
+
+        <!-- 恢復：學生測驗成績登記表 -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+          <h3 class="font-bold text-md mb-3">💯 全班學生測驗成績登記</h3>
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400">
+                <th class="py-2 px-3">學號</th>
+                <th class="py-2 px-3">姓名</th>
+                <th class="py-2 px-3">測驗得分</th>
+                <th class="py-2 px-3">百分比</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="student in getSortedStudents()" :key="student.id">
+                <tr class="border-b border-slate-100 dark:border-slate-700/50">
+                  <td class="py-2 px-3 font-mono text-slate-500" x-text="student.no || '-'"></td>
+                  <td class="py-2 px-3 font-medium" x-text="student.name"></td>
+                  <td class="py-2 px-3">
+                    <input type="number" 
+                           :value="quizScores[student.id] !== undefined ? quizScores[student.id] : ''"
+                           @input="updateQuizScore(student.id, $event.target.value)"
+                           placeholder="輸入分數" 
+                           class="w-24 px-2 py-1 border rounded text-sm dark:bg-slate-700 dark:border-slate-600">
+                  </td>
+                  <td class="py-2 px-3 font-mono text-slate-500">
+                    <span x-text="quizScores[student.id] !== undefined ? `${((quizScores[student.id] / quizMaxScore) * 100).toFixed(1)}%` : '-'"></span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -266,7 +376,44 @@
     </div>
   </div>
 
-  <!-- 彈窗：事件模組設定 (自訂項目) -->
+  <!-- 彈窗：編輯學生名單 (含恢復的「📋 批量貼上學生名單」) -->
+  <div x-show="showStudentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-lg">編輯學生名單與學號</h3>
+        <button @click="showBatchModal = true" class="text-xs bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded font-medium">📋 批量貼上學生</button>
+      </div>
+
+      <div class="max-h-60 overflow-y-auto space-y-2">
+        <template x-for="s in currentStudents" :key="s.id">
+          <div class="flex items-center space-x-2">
+            <input type="text" x-model="s.no" placeholder="學號" class="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600">
+            <input type="text" x-model="s.name" placeholder="學生姓名" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600">
+            <button @click="removeStudent(s.id)" class="text-red-500 text-xs">刪除</button>
+          </div>
+        </template>
+      </div>
+      <button @click="addNewStudentInput()" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">+ 單筆新增學生</button>
+      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <button @click="saveDataToFirebase(); showStudentModal = false" class="px-4 py-1.5 text-xs bg-indigo-600 text-white rounded-md">完成並儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗：批量貼上學生名單 (恢復功能) -->
+  <div x-show="showBatchModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl space-y-3">
+      <h3 class="font-bold text-lg">📋 批量貼上學生名單</h3>
+      <p class="text-xs text-slate-500">請貼上學生名單（每行一個姓名，或「學號 姓名」）：</p>
+      <textarea x-model="batchInputText" rows="6" placeholder="01 張小明&#10;02 李大衛&#10;王小花" class="w-full p-2 border rounded text-xs dark:bg-slate-700 font-mono"></textarea>
+      <div class="flex justify-end space-x-2">
+        <button @click="showBatchModal = false" class="px-3 py-1.5 text-xs text-slate-500">取消</button>
+        <button @click="processBatchStudents()" class="px-4 py-1.5 text-xs bg-indigo-600 text-white rounded-md">匯入名單</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗：事件模組設定 -->
   <div x-show="showCategoryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-sm shadow-2xl space-y-3">
       <h3 class="font-bold text-lg">⚙️ 課堂事件預設項目</h3>
@@ -284,26 +431,6 @@
       </div>
       <div class="flex justify-end pt-2">
         <button @click="showCategoryModal = false" class="px-4 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 rounded-md">關閉</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 彈窗：編輯學生與學號 -->
-  <div x-show="showStudentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-white dark:bg-slate-800 rounded-xl p-5 w-full max-w-md shadow-2xl space-y-4">
-      <h3 class="font-bold text-lg">編輯學生名單與學號</h3>
-      <div class="max-h-60 overflow-y-auto space-y-2">
-        <template x-for="(s, idx) in currentStudents" :key="s.id">
-          <div class="flex items-center space-x-2">
-            <input type="text" x-model="s.no" placeholder="學號" class="w-16 px-2 py-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600">
-            <input type="text" x-model="s.name" placeholder="學生姓名" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600">
-            <button @click="removeStudent(s.id)" class="text-red-500 text-xs">刪除</button>
-          </div>
-        </template>
-      </div>
-      <button @click="addNewStudentInput()" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">+ 新增學生</button>
-      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-        <button @click="saveDataToFirebase(); showStudentModal = false" class="px-4 py-1.5 text-xs bg-indigo-600 text-white rounded-md">完成並儲存</button>
       </div>
     </div>
   </div>
@@ -373,18 +500,17 @@
     </div>
   </div>
 
-  <!-- JavaScript 與 Firebase 雲端邏輯 -->
+  <!-- JavaScript 與 Firebase 邏輯 -->
   <script>
-    // Firebase 初始化代碼
-  const firebaseConfig = {
-    apiKey: "AIzaSyA5YYncT7-6_0O3kZh1Iq0zoreOVk2og50",
-    authDomain: "homework-tracker-971ef.firebaseapp.com",
-    projectId: "homework-tracker-971ef",
-    storageBucket: "homework-tracker-971ef.firebasestorage.app",
-    messagingSenderId: "640761164042",
-    appId: "1:640761164042:web:097643fafa0e943831caf3",
-    measurementId: "G-W3Y7MH62EC"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5YYncT7-6_003kZh1Iq0zoreOVk2og50",
+      authDomain: "homework-tracker-971ef.firebaseapp.com",
+      projectId: "homework-tracker-971ef",
+      storageBucket: "homework-tracker-971ef.firebasestorage.app",
+      messagingSenderId: "640761164042",
+      appId: "1:640761164042:web:097643fafa0e943831caf3",
+      measurementId: "G-W3Y7MH62EC"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
@@ -394,19 +520,24 @@
       return {
         user: null,
         isDarkMode: false,
-        currentTab: 'overview',
+        currentTab: 'homework',
         classes: ['3A', '3B'],
         currentClass: '3A',
         newClassName: '',
+        enableHwsScores: false, // 功課分數開關
+        selectedHomeworkId: null,
+
         presetCategories: ['未帶計算機', '未帶課本', '未帶功課', '課堂生事', '遲到'],
         newCategoryName: '',
 
         showClassModal: false,
         showCategoryModal: false,
         showStudentModal: false,
+        showBatchModal: false,
         showQuizConfigModal: false,
         showIncidentModal: false,
 
+        batchInputText: '',
         quizConfig: { passPct: 60, excellent: 90, good: 80, average: 70 },
 
         students: [
@@ -416,8 +547,8 @@
         homeworks: [
           { id: 'h1', class: '3A', title: '數學工作紙 (一)' }
         ],
-        records: {},
-        quizScores: { s1: 15, s2: 8 },
+        records: {}, // 支援舊版字串或新版物件 { status, score }
+        quizScores: {},
         quizMaxScore: 20,
         incidents: [],
 
@@ -429,7 +560,6 @@
             document.documentElement.classList.add('dark');
           }
 
-          // 監聽 Firebase 登入狀態
           auth.onAuthStateChanged(u => {
             this.user = u;
             if (u) {
@@ -447,7 +577,6 @@
           auth.signOut();
         },
 
-        // 讀取 Firebase 雲端資料
         async loadDataFromFirebase() {
           if (!this.user) return;
           try {
@@ -455,27 +584,35 @@
             if (doc.exists) {
               const data = doc.data();
               if (data.classes) this.classes = data.classes;
+              if (data.enableHwsScores !== undefined) this.enableHwsScores = data.enableHwsScores;
               if (data.presetCategories) this.presetCategories = data.presetCategories;
               if (data.quizConfig) this.quizConfig = data.quizConfig;
+              if (data.quizMaxScore) this.quizMaxScore = data.quizMaxScore;
               if (data.students) this.students = data.students;
               if (data.homeworks) this.homeworks = data.homeworks;
               if (data.records) this.records = data.records;
               if (data.quizScores) this.quizScores = data.quizScores;
               if (data.incidents) this.incidents = data.incidents;
+
+              // 自動預選第一項功課
+              if (this.currentHomeworks.length > 0) {
+                this.selectedHomeworkId = this.currentHomeworks[0].id;
+              }
             }
           } catch (e) {
             console.error("載入失敗", e);
           }
         },
 
-        // 寫入/同步至 Firebase
         async saveDataToFirebase() {
           if (!this.user) return;
           try {
             await db.collection('homework_trackers').doc(this.user.uid).set({
               classes: this.classes,
+              enableHwsScores: this.enableHwsScores,
               presetCategories: this.presetCategories,
               quizConfig: this.quizConfig,
+              quizMaxScore: this.quizMaxScore,
               students: this.students,
               homeworks: this.homeworks,
               records: this.records,
@@ -498,7 +635,6 @@
           }
         },
 
-        // 班別管理功能
         addClass() {
           if (this.newClassName && !this.classes.includes(this.newClassName)) {
             this.classes.push(this.newClassName);
@@ -515,7 +651,6 @@
           this.saveDataToFirebase();
         },
 
-        // 事件模組管理功能
         addCategory() {
           if (this.newCategoryName && !this.presetCategories.includes(this.newCategoryName)) {
             this.presetCategories.push(this.newCategoryName);
@@ -541,21 +676,25 @@
           return this.homeworks.filter(h => h.class === this.currentClass);
         },
 
-        get currentIncidents() {
-          const studentIds = this.currentStudents.map(s => s.id);
-          return this.incidents.filter(i => studentIds.includes(i.studentId));
+        getSelectedHomework() {
+          return this.homeworks.find(h => h.id === this.selectedHomeworkId) || this.currentHomeworks[0];
         },
 
         addHomeworkPrompt() {
           const title = prompt('請輸入功課名稱：');
           if (title) {
-            this.homeworks.push({ id: 'h_' + Date.now(), class: this.currentClass, title });
+            const newHw = { id: 'h_' + Date.now(), class: this.currentClass, title };
+            this.homeworks.push(newHw);
+            this.selectedHomeworkId = newHw.id;
             this.saveDataToFirebase();
           }
         },
 
         deleteHomework(id) {
           this.homeworks = this.homeworks.filter(h => h.id !== id);
+          if (this.selectedHomeworkId === id && this.currentHomeworks.length > 0) {
+            this.selectedHomeworkId = this.currentHomeworks[0].id;
+          }
           this.saveDataToFirebase();
         },
 
@@ -573,22 +712,55 @@
           this.saveDataToFirebase();
         },
 
+        // 功課狀態與分數處理 (兼容舊版字串與新版物件)
+        getStatus(studentId, hwId) {
+          const key = `${studentId}_${hwId}`;
+          const rec = this.records[key];
+          if (!rec) return 'missing'; // 預設未交
+          return typeof rec === 'object' ? rec.status : rec;
+        },
+
+        setStatus(studentId, hwId, status) {
+          const key = `${studentId}_${hwId}`;
+          const current = this.records[key];
+          const score = typeof current === 'object' ? current.score : null;
+          this.records[key] = { status, score };
+          this.saveDataToFirebase();
+        },
+
+        getScore(studentId, hwId) {
+          const key = `${studentId}_${hwId}`;
+          const rec = this.records[key];
+          return (typeof rec === 'object' && rec.score !== undefined) ? rec.score : '';
+        },
+
+        setScore(studentId, hwId, score) {
+          const key = `${studentId}_${hwId}`;
+          const currentStatus = this.getStatus(studentId, hwId);
+          this.records[key] = { status: currentStatus, score: score !== '' ? Number(score) : null };
+          this.saveDataToFirebase();
+        },
+
         getMissingHomeworks(studentId) {
-          return this.currentHomeworks.filter(hw => {
-            const key = `${studentId}_${hw.id}`;
-            return !this.records[key] || this.records[key] === 'missing';
-          });
+          return this.currentHomeworks.filter(hw => this.getStatus(studentId, hw.id) === 'missing');
         },
 
         getCorrectionHomeworks(studentId) {
-          return this.currentHomeworks.filter(hw => {
-            const key = `${studentId}_${hw.id}`;
-            return this.records[key] === 'correction';
-          });
+          return this.currentHomeworks.filter(hw => this.getStatus(studentId, hw.id) === 'correction');
+        },
+
+        // 測驗成績更新
+        updateQuizScore(studentId, val) {
+          if (val === '') {
+            delete this.quizScores[studentId];
+          } else {
+            this.quizScores[studentId] = Number(val);
+          }
+          this.saveDataToFirebase();
         },
 
         get quizStats() {
-          const scores = this.currentStudents.map(s => this.quizScores[s.id]).filter(v => v !== undefined);
+          const scores = this.currentStudents.map(s => this.quizScores[s.id]).filter(v => v !== undefined && v !== '');
           if (scores.length === 0) return { avg: 0, avgPct: '0.0', passRate: 0, max: 0, min: 0, count: 0, grades: { excellent: 0, good: 0, average: 0, pass: 0, fail: 0 } };
 
           const sum = scores.reduce((a, b) => a + b, 0);
@@ -618,6 +790,11 @@
           };
         },
 
+        get currentIncidents() {
+          const studentIds = this.currentStudents.map(s => s.id);
+          return this.incidents.filter(i => studentIds.includes(i.studentId));
+        },
+
         getStudentName(id) {
           const s = this.students.find(st => st.id === id);
           return s ? `${s.no || ''} ${s.name}` : '未知學生';
@@ -629,6 +806,27 @@
 
         removeStudent(id) {
           this.students = this.students.filter(s => s.id !== id);
+        },
+
+        // 恢復：批量貼上學生處理邏輯
+        processBatchStudents() {
+          if (!this.batchInputText.trim()) return;
+          const lines = this.batchInputText.split('\n');
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return;
+            const parts = trimmed.split(/\s+/);
+            let no = '';
+            let name = trimmed;
+            if (parts.length > 1 && !isNaN(parts[0])) {
+              no = parts[0];
+              name = parts.slice(1).join(' ');
+            }
+            this.students.push({ id: 's_' + Date.now() + Math.random().toString(36).substr(2, 4), class: this.currentClass, no, name });
+          });
+          this.batchInputText = '';
+          this.showBatchModal = false;
+          this.saveDataToFirebase();
         },
 
         saveIncident() {
@@ -651,7 +849,7 @@
             '學號': s.no || '',
             '姓名': s.name,
             '未交功課數': this.getMissingHomeworks(s.id).length,
-            '測驗分數': this.quizScores[s.id] || 0
+            '測驗分數': this.quizScores[s.id] !== undefined ? this.quizScores[s.id] : ''
           }));
           const ws1 = XLSX.utils.json_to_sheet(hwData);
           XLSX.utils.book_append_sheet(wb, ws1, "功課與測驗");
