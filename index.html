@@ -13,6 +13,8 @@
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <!-- SheetJS Excel 匯出套件 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Chart.js 圖表套件 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -47,11 +49,12 @@
         <!-- 頁籤選單與導出備份 -->
         <div class="flex flex-wrap items-center gap-2">
           <nav class="flex bg-indigo-700 dark:bg-indigo-950 p-1 rounded-lg text-sm font-medium">
-            <button @click="currentTab = 'homework'" :class="currentTab === 'homework' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📋 按功課管理</button>
-            <button @click="currentTab = 'overview'" :class="currentTab === 'overview' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📊 學生整體總覽</button>
-            <button @click="currentTab = 'quiz'" :class="currentTab === 'quiz' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📈 測驗成績分析</button>
-            <button @click="currentTab = 'incidents'" :class="currentTab === 'incidents' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📝 課堂紀錄</button>
-            <button @click="currentTab = 'settings'" :class="currentTab === 'settings' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">⚙️ 設定與班別</button>
+            <button @click="switchTab('homework')" :class="currentTab === 'homework' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📋 按功課管理</button>
+            <button @click="switchTab('overview')" :class="currentTab === 'overview' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📊 學生整體總覽</button>
+            <button @click="switchTab('quiz')" :class="currentTab === 'quiz' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📈 測驗成績分析</button>
+            <button @click="switchTab('seating')" :class="currentTab === 'seating' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">🪑 課室座位表</button>
+            <button @click="switchTab('incidents')" :class="currentTab === 'incidents' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">📝 課堂紀錄</button>
+            <button @click="switchTab('settings')" :class="currentTab === 'settings' ? 'bg-white text-indigo-700 dark:bg-slate-800 dark:text-indigo-300 shadow' : 'text-white hover:text-indigo-200'" class="px-3 py-1.5 rounded-md transition">⚙️ 設定與班別</button>
           </nav>
 
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow flex items-center space-x-1">
@@ -77,7 +80,7 @@
         <div class="flex items-center space-x-3">
           <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">當前班別：</span>
           <template x-for="cls in classes" :key="cls">
-            <button @click="currentClass = cls; autoSelectFirstHomework(); autoSelectFirstQuiz();" 
+            <button @click="currentClass = cls; autoSelectFirstHomework(); autoSelectFirstQuiz(); refreshChart();" 
                     :class="currentClass === cls ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'"
                     class="px-4 py-1.5 rounded-xl font-bold text-sm transition" x-text="cls"></button>
           </template>
@@ -88,10 +91,8 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 按功課管理頁面 (縱向單行排列) ==================== -->
+      <!-- ==================== 1. 按功課管理頁面 ==================== -->
       <div x-show="currentTab === 'homework'" class="space-y-6">
-        
-        <!-- 選擇功課列 -->
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
             <span class="text-sm font-bold text-slate-600 dark:text-slate-300">選擇功課：</span>
@@ -101,14 +102,13 @@
               </template>
             </select>
             <button @click="editHomeworkName()" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 font-medium">✏️ 編輯</button>
-            <button @click="deleteCurrentHomework()" class="bg-slate-100 hover:bg-red-50 dark:bg-slate-700 dark:hover:bg-red-950/50 text-red-600 text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 font-medium">🗑️ 刪除</button>
+            <button @click="deleteCurrentHomework()" class="bg-slate-100 hover:bg-red-50 dark:bg-slate-700 text-red-600 text-xs px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 font-medium">🗑️ 刪除</button>
           </div>
           <button @click="addHomeworkPrompt()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition">+ 新增功課</button>
         </div>
 
         <template x-if="getSelectedHomework()">
           <div class="space-y-6">
-            <!-- 6 大數據卡片 -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border-2 border-indigo-500 shadow-sm text-slate-700 dark:text-slate-200">
                 <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">全班人數</p>
@@ -136,7 +136,6 @@
               </div>
             </div>
 
-            <!-- 作業詳細登記 (縱向排列，方便看行不點錯) -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
               <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 class="text-lg font-bold flex items-center space-x-2">
@@ -160,17 +159,16 @@
                 </div>
               </div>
 
-              <!-- 縱向單行學生列表 (全版單欄縱向，滑鼠移過整行高亮) -->
+              <!-- 縱向單行學生列表 -->
               <div class="space-y-2">
                 <template x-for="(student, sIdx) in getSortedStudents()" :key="student.id">
                   <div class="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-700/30 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition gap-2">
-                    <!-- 學生學號與姓名 -->
                     <div class="flex items-center space-x-3 min-w-[160px]">
                       <span class="w-8 text-center text-xs font-bold text-slate-500 font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded-md" x-text="student.no || (sIdx + 1)"></span>
-                      <span class="font-bold text-sm" x-text="student.name"></span>
+                      <!-- 點擊學生姓名可開啟個人綜合檔案卡 -->
+                      <button @click="openStudentProfile(student.id)" class="font-bold text-sm hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline" x-text="student.name"></button>
                     </div>
 
-                    <!-- 狀態點選按鈕 (緊貼個人資料) -->
                     <div class="flex items-center space-x-1 text-xs">
                       <button @click="setStatus(student.id, selectedHomeworkId, 'completed')" 
                               :class="getStatus(student.id, selectedHomeworkId) === 'completed' ? 'bg-emerald-600 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'" 
@@ -196,14 +194,12 @@
         </template>
       </div>
 
-      <!-- ==================== 2. 測驗成績分析頁面 (一排 2 個學生 + 顯示學號 + 禁用滾輪) ==================== -->
+      <!-- ==================== 2. 測驗成績分析頁面 (整合 Chart.js 動態圖表) ==================== -->
       <div x-show="currentTab === 'quiz'" class="space-y-6">
-        
-        <!-- 測驗選取與新增工具列 -->
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
             <span class="text-sm font-bold text-slate-600 dark:text-slate-300">選擇測驗項目：</span>
-            <select x-model="selectedQuizId" class="border rounded-xl px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-600 font-medium min-w-[160px]">
+            <select x-model="selectedQuizId" @change="refreshChart()" class="border rounded-xl px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-600 font-medium min-w-[160px]">
               <template x-for="q in currentQuizzes" :key="q.id">
                 <option :value="q.id" x-text="q.title"></option>
               </template>
@@ -223,7 +219,6 @@
                   <h2 class="text-lg font-bold" x-text="`${getSelectedQuiz().title} 成績分析`"></h2>
                   <div class="flex items-center space-x-1 text-xs">
                     <span class="text-slate-500">滿分：</span>
-                    <!-- 禁用滾輪修改數字 @wheel="$event.target.blur()" -->
                     <input type="number" :value="getSelectedQuiz().maxScore" @wheel="$event.target.blur()" @change="updateQuizMaxScore($event.target.value)" class="w-16 px-2 py-0.5 border rounded-lg text-xs dark:bg-slate-700 font-bold">
                   </div>
                 </div>
@@ -248,26 +243,31 @@
                   <p class="text-2xl font-black mt-1" x-text="`${quizStats.count} 人`"></p>
                 </div>
               </div>
+
+              <!-- 新增：Chart.js 動態成績分佈直方圖 -->
+              <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <p class="text-xs font-bold text-slate-500 mb-3">📊 全班成績等級區段分佈圖：</p>
+                <div class="h-56 relative">
+                  <canvas id="quizChartCanvas"></canvas>
+                </div>
+              </div>
             </div>
 
-            <!-- 全班測驗成績登記表 (改為一排 2 個學生，顯示學號，禁用滾輪) -->
+            <!-- 全班測驗成績登記表 -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
               <h3 class="font-bold text-md mb-3" x-text="`💯 ${getSelectedQuiz().title} 分數登記`"></h3>
-              <!-- 雙欄排版 grid-cols-1 md:grid-cols-2 -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 <template x-for="(student, sIdx) in getSortedStudents()" :key="student.id">
                   <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-700/30">
                     <div class="flex items-center space-x-2.5">
-                      <!-- 顯眼學號標籤 -->
                       <span class="w-8 text-center text-xs font-bold text-slate-500 font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded-md" x-text="student.no || (sIdx + 1)"></span>
-                      <span class="font-bold text-sm" x-text="student.name"></span>
+                      <button @click="openStudentProfile(student.id)" class="font-bold text-sm hover:underline" x-text="student.name"></button>
                     </div>
                     <div class="flex items-center space-x-2">
-                      <!-- 禁用滑輪調整 @wheel="$event.target.blur()" -->
                       <input type="number" 
                              :value="getQuizScore(selectedQuizId, student.id)"
                              @wheel="$event.target.blur()"
-                             @input="setQuizScore(selectedQuizId, student.id, $event.target.value)"
+                             @input="setQuizScore(selectedQuizId, student.id, $event.target.value); refreshChart();"
                              placeholder="得分" 
                              class="w-20 px-2.5 py-1 border rounded-lg text-sm dark:bg-slate-700 dark:border-slate-600 font-bold">
                       <span class="text-xs text-slate-400 font-mono w-10 text-right" x-text="getQuizScorePct(selectedQuizId, student.id)"></span>
@@ -280,7 +280,59 @@
         </template>
       </div>
 
-      <!-- ==================== 3. 課堂紀錄頁面 ==================== -->
+      <!-- ==================== 3. 課室座位表與智慧隨機排位 (全新功能) ==================== -->
+      <div x-show="currentTab === 'seating'" class="space-y-6">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+          <div class="flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <h2 class="text-lg font-bold" x-text="`🪑 ${currentClass} 班課室座位表`"></h2>
+              <p class="text-xs text-slate-400">系統可根據高個子避開前排、矛盾同學避開同桌等條件進行智慧隨機排位。</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button @click="showSeatingRuleModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl font-bold">⚙️ 設定學生座位規則</button>
+              <button @click="smartRandomizeSeats()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition">🎲 智慧隨機排座位</button>
+            </div>
+          </div>
+
+          <!-- 黑板 / 講台標示 -->
+          <div class="bg-slate-800 text-white text-center py-2 rounded-xl font-bold text-xs tracking-widest shadow-inner">
+            🖥️ 講台 / 黑板方向 (前排)
+          </div>
+
+          <!-- 座位網格 -->
+          <div class="grid gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto"
+               :style="`grid-template-columns: repeat(${seatingGridCols}, minmax(110px, 1fr));`">
+            <template x-for="r in seatingGridRows" :key="r">
+              <template x-for="c in seatingGridCols" :key="c">
+                <div class="p-3 bg-white dark:bg-slate-800 border rounded-2xl flex flex-col justify-between items-center h-24 shadow-sm hover:border-indigo-500 transition relative group"
+                     :class="getSeatStudent(r, c) ? 'border-slate-200 dark:border-slate-700' : 'border-dashed border-slate-300 dark:border-slate-700/60'">
+                  
+                  <span class="text-[10px] text-slate-400 font-mono self-start" x-text="`R${r}-C${c}`"></span>
+
+                  <template x-if="getSeatStudent(r, c)">
+                    <div class="text-center w-full">
+                      <p class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400" x-text="`#${getSeatStudent(r, c).no || '-'}`"></p>
+                      <button @click="openStudentProfile(getSeatStudent(r, c).id)" class="text-xs font-bold text-slate-800 dark:text-slate-100 hover:underline truncate max-w-full block mx-auto" x-text="getSeatStudent(r, c).name"></button>
+                      
+                      <!-- 標籤小圖示 -->
+                      <div class="flex justify-center space-x-1 mt-1">
+                        <template x-if="getSeatStudent(r, c).isTall"><span class="text-[9px] bg-blue-100 text-blue-700 px-1 rounded">高</span></template>
+                        <template x-if="getSeatStudent(r, c).frontRow"><span class="text-[9px] bg-amber-100 text-amber-700 px-1 rounded">前</span></template>
+                      </div>
+                    </div>
+                  </template>
+
+                  <template x-if="!getSeatStudent(r, c)">
+                    <span class="text-xs text-slate-300 dark:text-slate-600 font-medium">空位</span>
+                  </template>
+                </div>
+              </template>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 4. 課堂紀錄頁面 ==================== -->
       <div x-show="currentTab === 'incidents'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
         <div class="flex flex-wrap justify-between items-center gap-2">
           <h2 class="text-lg font-bold">📋 課堂事件與欠帶紀錄</h2>
@@ -304,7 +356,7 @@
             <template x-for="log in currentIncidents" :key="log.id">
               <tr class="border-b border-slate-100 dark:border-slate-700/50">
                 <td class="py-2.5 px-3 font-mono text-slate-500" x-text="log.date"></td>
-                <td class="py-2.5 px-3 font-bold" x-text="getStudentName(log.studentId)"></td>
+                <td class="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" @click="openStudentProfile(log.studentId)" x-text="getStudentName(log.studentId)"></td>
                 <td class="py-2.5 px-3">
                   <span class="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold" x-text="log.category"></span>
                 </td>
@@ -318,9 +370,8 @@
         </table>
       </div>
 
-      <!-- ==================== 4. 設定與班別頁面 ==================== -->
+      <!-- ==================== 5. 設定與班別頁面 ==================== -->
       <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- 班別管理 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-5">
           <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">1. 班別管理</h2>
           <div class="flex space-x-2">
@@ -341,7 +392,6 @@
           </div>
         </div>
 
-        <!-- 批量導入學生 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
           <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">
             <span>2. 批量導入學生名單到 </span>
@@ -355,7 +405,6 @@
           </div>
         </div>
 
-        <!-- JSON 離線備份 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
           <h2 class="text-lg font-bold">3. 資料庫離線備份與還原 (JSON)</h2>
           <p class="text-xs text-slate-400">您可以下載 JSON 備份檔案存放在電腦，或者上傳舊有備份檔案進行還原。</p>
@@ -369,10 +418,10 @@
         </div>
       </div>
 
-      <!-- ==================== 5. 學生整體總覽頁面 ==================== -->
+      <!-- ==================== 6. 學生整體總覽頁面 ==================== -->
       <div x-show="currentTab === 'overview'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
         <h2 class="text-lg font-bold" x-text="`${currentClass} 班學生交功課整體情況`"></h2>
-        <p class="text-xs text-slate-400">💡 提示：將滑鼠移動到數字上，可直接查看該項目的功課名稱清單。</p>
+        <p class="text-xs text-slate-400">💡 提示：點擊學生姓名可查看個人檔案；將滑鼠移動到數字上可查看未交功課清單。</p>
 
         <div class="overflow-visible">
           <table class="w-full text-left text-sm">
@@ -389,7 +438,7 @@
               <template x-for="(student, sIdx) in getSortedStudents()" :key="student.id">
                 <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30">
                   <td class="py-2.5 px-3 font-mono text-slate-500" x-text="student.no || (sIdx + 1)"></td>
-                  <td class="py-2.5 px-3 font-bold" x-text="student.name"></td>
+                  <td class="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" @click="openStudentProfile(student.id)" x-text="student.name"></td>
                   <td class="py-2.5 px-3 relative group">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 cursor-pointer"
                           x-text="getMissingHomeworks(student.id).length"></span>
@@ -417,12 +466,128 @@
     </main>
   </div>
 
-  <!-- 彈窗 1：編輯學生與學號 (包含修改學號、姓名、刪除退學生) -->
+  <!-- 彈窗 A：個人學生綜合檔案卡 (全新功能) -->
+  <div x-show="showStudentProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <template x-if="profileStudent">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-start border-b pb-3 border-slate-100 dark:border-slate-700">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold font-mono bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md" x-text="`學號 #${profileStudent.no || '-'}`"></span>
+              <h3 class="font-black text-xl" x-text="profileStudent.name"></h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-1" x-text="`班別：${profileStudent.class}`"></p>
+          </div>
+          <button @click="showStudentProfileModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+        </div>
+
+        <!-- 功課繳交表現統計卡片 -->
+        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 rounded-xl">
+            <p class="text-emerald-600 font-bold">功課完成率</p>
+            <p class="text-lg font-black text-emerald-700 mt-0.5" x-text="`${getStudentHomeworkRate(profileStudent.id)}%`"></p>
+          </div>
+          <div class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-100 rounded-xl">
+            <p class="text-red-600 font-bold">累積未交</p>
+            <p class="text-lg font-black text-red-700 mt-0.5" x-text="`${getMissingHomeworks(profileStudent.id).length} 次`"></p>
+          </div>
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-100 rounded-xl">
+            <p class="text-amber-600 font-bold">累積待改</p>
+            <p class="text-lg font-black text-amber-700 mt-0.5" x-text="`${getCorrectionHomeworks(profileStudent.id).length} 次`"></p>
+          </div>
+        </div>
+
+        <!-- 測驗成績歷程 -->
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500">📈 歷次測驗成績紀錄：</p>
+          <div class="space-y-1.5">
+            <template x-for="q in currentQuizzes" :key="q.id">
+              <div class="flex justify-between items-center text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-700">
+                <span class="font-bold" x-text="q.title"></span>
+                <div class="font-mono font-bold">
+                  <span class="text-indigo-600 dark:text-indigo-400" x-text="getQuizScore(q.id, profileStudent.id) !== '' ? `${getQuizScore(q.id, profileStudent.id)} / ${q.maxScore} 分` : '未考/未登記'"></span>
+                  <span class="text-slate-400 text-[10px] ml-1" x-text="`(${getQuizScorePct(q.id, profileStudent.id)})`"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- 課堂紀錄歷史 -->
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-slate-500">📝 課堂紀錄歷史：</p>
+          <div class="max-h-32 overflow-y-auto space-y-1">
+            <template x-for="log in getStudentIncidents(profileStudent.id)" :key="log.id">
+              <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
+                <div class="space-x-2">
+                  <span class="font-mono text-slate-400" x-text="log.date"></span>
+                  <span class="font-bold text-amber-800 dark:text-amber-300" x-text="log.category"></span>
+                </div>
+                <span class="text-slate-500 truncate max-w-[150px]" x-text="log.note || '-'"></span>
+              </div>
+            </template>
+            <template x-if="getStudentIncidents(profileStudent.id).length === 0">
+              <p class="text-xs text-slate-400 italic">良好！無不良課堂紀錄 ✨</p>
+            </template>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t">
+          <button @click="showStudentProfileModal = false" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">關閉視窗</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- 彈窗 B：設定學生座位排位規則 (高個子/矛盾避開) -->
+  <div x-show="showSeatingRuleModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-lg shadow-2xl space-y-4">
+      <h3 class="font-bold text-lg" x-text="`⚙️ 設定 ${currentClass} 班學生座位排位條件`"></h3>
+      
+      <div class="max-h-64 overflow-y-auto space-y-3 pr-1">
+        <template x-for="s in currentStudents" :key="s.id">
+          <div class="p-3 bg-slate-50 dark:bg-slate-700/40 rounded-xl space-y-2 border border-slate-100 dark:border-slate-700">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-sm" x-text="`#${s.no || '-'} ${s.name}`"></span>
+              <div class="flex items-center space-x-3 text-xs">
+                <label class="flex items-center space-x-1 cursor-pointer">
+                  <input type="checkbox" x-model="s.isTall" class="rounded text-indigo-600">
+                  <span>高個子 (不排1-2行)</span>
+                </label>
+                <label class="flex items-center space-x-1 cursor-pointer">
+                  <input type="checkbox" x-model="s.frontRow" class="rounded text-indigo-600">
+                  <span>需排前排</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 避開矛盾同學 -->
+            <div class="text-xs">
+              <span class="text-slate-400 font-medium">避開同桌同學（矛盾者不相鄰）：</span>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <template x-for="other in currentStudents.filter(o => o.id !== s.id)" :key="other.id">
+                  <button @click="toggleAvoidStudent(s, other.id)" 
+                          :class="(s.avoidIds || []).includes(other.id) ? 'bg-red-500 text-white font-bold' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
+                          class="px-2 py-0.5 rounded text-[10px] transition" x-text="other.name"></button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t">
+        <button @click="saveDataToFirebase(); showSeatingRuleModal = false" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存條件設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗 C：編輯學生與學號 -->
   <div x-show="showStudentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-lg shadow-2xl space-y-4">
       <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-2">
         <h3 class="font-bold text-lg" x-text="`✏️ 編輯 ${currentClass} 班學生名單與學號`"></h3>
-        <button @click="autoResequenceStudentNos()" class="text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded-lg font-bold">✨ 一鍵順排學號 (01, 02...)</button>
+        <button @click="autoResequenceStudentNos()" class="text-xs bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 px-2.5 py-1 rounded-lg font-bold">✨ 一鍵順排學號</button>
       </div>
 
       <div class="max-h-72 overflow-y-auto space-y-2 pr-1">
@@ -443,24 +608,23 @@
     </div>
   </div>
 
-  <!-- 彈窗 2：測驗合格標準設定 -->
+  <!-- 彈窗 D：測驗合格標準設定 -->
   <div x-show="showQuizConfigModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3">
       <h3 class="font-bold text-lg">⚙️ 設定測驗合格標準</h3>
       <div class="space-y-2 text-sm">
         <div>
           <label class="block text-xs text-slate-500 font-medium">及格標準百分比 (%)</label>
-          <!-- 禁用滾輪 @wheel="$event.target.blur()" -->
           <input type="number" x-model.number="quizConfig.passPct" @wheel="$event.target.blur()" class="w-full px-3 py-1.5 border rounded-xl dark:bg-slate-700 font-bold">
         </div>
       </div>
       <div class="flex justify-end pt-2">
-        <button @click="saveDataToFirebase(); showQuizConfigModal = false" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存設定</button>
+        <button @click="saveDataToFirebase(); showQuizConfigModal = false; refreshChart();" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存設定</button>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 3：管理課堂事件選項 -->
+  <!-- 彈窗 E：管理課堂事件選項 -->
   <div x-show="showCategoryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3">
       <h3 class="font-bold text-lg">⚙️ 管理課堂事件選項</h3>
@@ -482,7 +646,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 4：登記課堂事件 -->
+  <!-- 彈窗 F：登記課堂事件 -->
   <div x-show="showIncidentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-md shadow-2xl space-y-3">
       <h3 class="font-bold text-lg">登記課堂事件 / 欠帶</h3>
@@ -521,15 +685,15 @@
 
   <!-- JS 邏輯 -->
   <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyA5YYncT7-6_0O3kZh1Iq0zoreOVk2og50",
-  authDomain: "homework-tracker-971ef.firebaseapp.com",
-  projectId: "homework-tracker-971ef",
-  storageBucket: "homework-tracker-971ef.firebasestorage.app",
-  messagingSenderId: "640761164042",
-  appId: "1:640761164042:web:097643fafa0e943831caf3",
-  measurementId: "G-W3Y7MH62EC"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5YYncT7-6_003kZh1Iq0zoreOVk2og50",
+      authDomain: "homework-tracker-971ef.firebaseapp.com",
+      projectId: "homework-tracker-971ef",
+      storageBucket: "homework-tracker-971ef.firebasestorage.app",
+      messagingSenderId: "640761164042",
+      appId: "1:640761164042:web:097643fafa0e943831caf3",
+      measurementId: "G-W3Y7MH62EC"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
@@ -546,26 +710,32 @@ const firebaseConfig = {
         selectedHomeworkId: null,
         selectedQuizId: null,
 
+        // 座位設定與排位矩陣 (預設 5 行 x 6 列)
+        seatingGridRows: 5,
+        seatingGridCols: 6,
+        seatingAssignments: {}, // { class: { studentId: { r, c } } }
+
         batchInputText: '',
         showCategoryModal: false,
         showQuizConfigModal: false,
         showStudentModal: false,
         showIncidentModal: false,
+        showStudentProfileModal: false,
+        showSeatingRuleModal: false,
+
+        profileStudent: null,
+        chartInstance: null,
 
         presetCategories: ['未帶計算機', '未帶課本', '未帶功課', '課堂生事', '遲到'],
         newCategoryName: '',
 
         quizConfig: { passPct: 60 },
         students: [
-          { id: 's1', class: '3A', no: '01', name: '張小明' },
-          { id: 's2', class: '3A', no: '02', name: '李大衛' }
+          { id: 's1', class: '3A', no: '01', name: '張小明', isTall: false, frontRow: false, avoidIds: [] },
+          { id: 's2', class: '3A', no: '02', name: '李大衛', isTall: true, frontRow: false, avoidIds: [] }
         ],
-        homeworks: [
-          { id: 'h1', class: '3A', title: '工作紙5' }
-        ],
-        quizzes: [
-          { id: 'q1', class: '3A', title: '單元一小測', maxScore: 20 }
-        ],
+        homeworks: [{ id: 'h1', class: '3A', title: '工作紙5' }],
+        quizzes: [{ id: 'q1', class: '3A', title: '單元一小測', maxScore: 20 }],
         records: {}, 
         quizScores: {},
         incidents: [],
@@ -584,6 +754,13 @@ const firebaseConfig = {
               this.loadDataFromFirebase();
             }
           });
+        },
+
+        switchTab(tab) {
+          this.currentTab = tab;
+          if (tab === 'quiz') {
+            setTimeout(() => this.refreshChart(), 100);
+          }
         },
 
         loginGoogle() {
@@ -610,6 +787,7 @@ const firebaseConfig = {
               if (data.records) this.records = data.records;
               if (data.quizScores) this.quizScores = data.quizScores;
               if (data.incidents) this.incidents = data.incidents;
+              if (data.seatingAssignments) this.seatingAssignments = data.seatingAssignments;
 
               this.autoSelectFirstHomework();
               this.autoSelectFirstQuiz();
@@ -631,7 +809,8 @@ const firebaseConfig = {
               quizzes: this.quizzes,
               records: this.records,
               quizScores: this.quizScores,
-              incidents: this.incidents
+              incidents: this.incidents,
+              seatingAssignments: this.seatingAssignments
             }, { merge: true });
           } catch (e) {
             console.error("同步失敗", e);
@@ -647,6 +826,177 @@ const firebaseConfig = {
             document.documentElement.classList.remove('dark');
             localStorage.setItem('theme', 'light');
           }
+        },
+
+        // 開啟個人學生綜合檔案卡
+        openStudentProfile(studentId) {
+          const s = this.students.find(st => st.id === studentId);
+          if (s) {
+            this.profileStudent = s;
+            this.showStudentProfileModal = true;
+          }
+        },
+
+        getStudentHomeworkRate(studentId) {
+          const classHws = this.currentHomeworks;
+          if (classHws.length === 0) return 0;
+          const done = classHws.filter(hw => this.getStatus(studentId, hw.id) === 'completed').length;
+          return Math.round((done / classHws.length) * 100);
+        },
+
+        getStudentIncidents(studentId) {
+          return this.incidents.filter(i => i.studentId === studentId);
+        },
+
+        // 智慧隨機排座位 (含高個子/矛盾避開演算法)
+        smartRandomizeSeats() {
+          const students = this.currentStudents;
+          const R = this.seatingGridRows;
+          const C = this.seatingGridCols;
+          if (students.length > R * C) {
+            alert(`全班學生人數 (${students.length}) 超過座位容量 (${R * C})，請增加座位容量！`);
+            return;
+          }
+
+          let slots = [];
+          for (let r = 1; r <= R; r++) {
+            for (let c = 1; c <= C; c++) {
+              slots.push({ r, c });
+            }
+          }
+
+          let bestAssignment = null;
+          let foundValid = false;
+
+          for (let attempt = 0; attempt < 1000; attempt++) {
+            let shuffledSlots = [...slots].sort(() => Math.random() - 0.5);
+            let currentAssignment = {};
+            let gridMatrix = {};
+            let valid = true;
+
+            for (let i = 0; i < students.length; i++) {
+              const st = students[i];
+              const slot = shuffledSlots[i];
+
+              // 高個子避開第 1, 2 行
+              if (st.isTall && slot.r <= 2) {
+                valid = false;
+                break;
+              }
+              // 需前排同學必須在 1, 2 行
+              if (st.frontRow && slot.r > 2) {
+                valid = false;
+                break;
+              }
+
+              currentAssignment[st.id] = slot;
+              gridMatrix[`${slot.r}_${slot.c}`] = st.id;
+            }
+
+            if (!valid) continue;
+
+            // 避開矛盾同學相鄰 (上下左右)
+            for (let st of students) {
+              const pos = currentAssignment[st.id];
+              if (!pos) continue;
+
+              const avoidList = st.avoidIds || [];
+              if (avoidList.length === 0) continue;
+
+              const neighbors = [
+                `${pos.r - 1}_${pos.c}`,
+                `${pos.r + 1}_${pos.c}`,
+                `${pos.r}_${pos.c - 1}`,
+                `${pos.r}_${pos.c + 1}`
+              ];
+
+              for (let nKey of neighbors) {
+                const neighborId = gridMatrix[nKey];
+                if (neighborId && avoidList.includes(neighborId)) {
+                  valid = false;
+                  break;
+                }
+              }
+              if (!valid) break;
+            }
+
+            if (valid) {
+              bestAssignment = currentAssignment;
+              foundValid = true;
+              break;
+            }
+          }
+
+          if (foundValid) {
+            if (!this.seatingAssignments) this.seatingAssignments = {};
+            this.seatingAssignments[this.currentClass] = bestAssignment;
+            this.saveDataToFirebase();
+            alert('✨ 已根據智慧條件為全班排定最佳座位表！');
+          } else {
+            alert('⚠️ 嘗試 1000 次排位後未找到極端完美的組合，建議適當放寬同學的避開條件後重試！');
+          }
+        },
+
+        getSeatStudent(r, c) {
+          const classAssignments = (this.seatingAssignments && this.seatingAssignments[this.currentClass]) || {};
+          const studentId = Object.keys(classAssignments).find(sId => {
+            const pos = classAssignments[sId];
+            return pos && pos.r === r && pos.c === c;
+          });
+          return this.students.find(s => s.id === studentId);
+        },
+
+        toggleAvoidStudent(student, targetId) {
+          if (!student.avoidIds) student.avoidIds = [];
+          if (student.avoidIds.includes(targetId)) {
+            student.avoidIds = student.avoidIds.filter(id => id !== targetId);
+          } else {
+            student.avoidIds.push(targetId);
+          }
+        },
+
+        // Chart.js 成績分佈圖
+        refreshChart() {
+          const q = this.getSelectedQuiz();
+          if (!q) return;
+
+          const ctx = document.getElementById('quizChartCanvas');
+          if (!ctx) return;
+
+          const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
+          const counts = [0, 0, 0, 0, 0]; // 不及格, 及格, 中等, 良好, 優秀
+
+          scores.forEach(s => {
+            const pct = (s / q.maxScore) * 100;
+            if (pct >= 90) counts[4]++;
+            else if (pct >= 80) counts[3]++;
+            else if (pct >= 70) counts[2]++;
+            else if (pct >= 60) counts[1]++;
+            else counts[0]++;
+          });
+
+          if (this.chartInstance) {
+            this.chartInstance.destroy();
+          }
+
+          this.chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
+              datasets: [{
+                label: '人數',
+                data: counts,
+                backgroundColor: ['#ef4444', '#f59e0b', '#6366f1', '#3b82f6', '#10b981'],
+                borderRadius: 8
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+          });
         },
 
         addClass() {
@@ -701,7 +1051,7 @@ const firebaseConfig = {
             } else {
               no = (idx + 1).toString().padStart(2, '0');
             }
-            this.students.push({ id: 's_' + Date.now() + Math.random().toString(36).substr(2, 4), class: this.currentClass, no, name });
+            this.students.push({ id: 's_' + Date.now() + Math.random().toString(36).substr(2, 4), class: this.currentClass, no, name, isTall: false, frontRow: false, avoidIds: [] });
           });
           this.batchInputText = '';
           this.saveDataToFirebase();
@@ -718,7 +1068,7 @@ const firebaseConfig = {
 
         addNewStudentInput() {
           const nextNo = (this.currentStudents.length + 1).toString().padStart(2, '0');
-          this.students.push({ id: 's_' + Date.now(), class: this.currentClass, no: nextNo, name: '' });
+          this.students.push({ id: 's_' + Date.now(), class: this.currentClass, no: nextNo, name: '', isTall: false, frontRow: false, avoidIds: [] });
         },
 
         removeStudent(id) {
@@ -856,6 +1206,7 @@ const firebaseConfig = {
             this.quizzes.push(newQ);
             this.selectedQuizId = newQ.id;
             this.saveDataToFirebase();
+            setTimeout(() => this.refreshChart(), 100);
           }
         },
 
@@ -874,6 +1225,7 @@ const firebaseConfig = {
           if (!q) return;
           q.maxScore = Number(val) || 100;
           this.saveDataToFirebase();
+          this.refreshChart();
         },
 
         deleteCurrentQuiz() {
@@ -883,6 +1235,7 @@ const firebaseConfig = {
             this.quizzes = this.quizzes.filter(item => item.id !== q.id);
             this.autoSelectFirstQuiz();
             this.saveDataToFirebase();
+            this.refreshChart();
           }
         },
 
@@ -976,7 +1329,8 @@ const firebaseConfig = {
             quizzes: this.quizzes,
             records: this.records,
             quizScores: this.quizScores,
-            incidents: this.incidents
+            incidents: this.incidents,
+            seatingAssignments: this.seatingAssignments
           };
           const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
@@ -1003,6 +1357,7 @@ const firebaseConfig = {
                 if (data.records) this.records = data.records;
                 if (data.quizScores) this.quizScores = data.quizScores;
                 if (data.incidents) this.incidents = data.incidents;
+                if (data.seatingAssignments) this.seatingAssignments = data.seatingAssignments;
 
                 this.saveDataToFirebase();
                 alert('備份資料已成功還原！');
