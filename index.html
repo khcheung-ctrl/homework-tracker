@@ -284,12 +284,12 @@
         </template>
       </div>
 
-      <!-- ==================== 3. 學生整體總覽 (修復問題一：動態智慧定位浮動視窗) ==================== -->
+      <!-- ==================== 3. 學生整體總覽 (修改點 1：全狀態懸浮清單 + 智慧定位不遮擋) ==================== -->
       <div x-show="currentTab === 'overview'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
         <h2 class="text-lg font-bold" x-text="`${currentClass} 班學生交功課整體情況`"></h2>
-        <p class="text-xs text-slate-400">💡 提示：點擊姓名可開啟個人檔案（含成績趨勢圖）；移動至未交數字可查看功課清單。</p>
+        <p class="text-xs text-slate-400">💡 提示：點擊姓名可開啟個人檔案；移動至各狀態數字均可懸浮查看該類別的功課清單。</p>
 
-        <div class="overflow-x-auto pb-12">
+        <div class="overflow-x-auto pb-16">
           <table class="w-full text-left text-sm">
             <thead>
               <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-medium">
@@ -307,20 +307,36 @@
                 <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30">
                   <td class="py-2.5 px-3 font-mono text-slate-500" x-text="student.no || (sIdx + 1)"></td>
                   <td class="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" @click="openStudentProfile(student.id)" x-text="student.name"></td>
-                  <td class="py-2.5 px-3 font-bold text-emerald-600" x-text="getCompletedHomeworks(student.id).length"></td>
                   
-                  <!-- 未交數量與智慧向上/向下彈出視窗 -->
+                  <!-- 1. 已完成 -->
+                  <td class="py-2.5 px-3 relative group">
+                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 cursor-pointer"
+                          x-text="getCompletedHomeworks(student.id).length"></span>
+                    <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
+                         class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">✅ 已完成功課：</p>
+                      <template x-if="getCompletedHomeworks(student.id).length === 0">
+                        <p class="text-slate-400">尚無功課紀錄</p>
+                      </template>
+                      <ul class="list-disc list-inside space-y-0.5 text-slate-200 max-h-32 overflow-y-auto">
+                        <template x-for="hw in getCompletedHomeworks(student.id)" :key="hw.id">
+                          <li x-text="hw.title"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </td>
+
+                  <!-- 2. 未交數量 -->
                   <td class="py-2.5 px-3 relative group">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 cursor-pointer"
                           x-text="getMissingHomeworks(student.id).length"></span>
-                    
                     <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
                          class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
-                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">未交功課清單：</p>
+                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">❌ 未交功課：</p>
                       <template x-if="getMissingHomeworks(student.id).length === 0">
                         <p class="text-slate-400">已全部繳交 ✨</p>
                       </template>
-                      <ul class="list-disc list-inside space-y-0.5 text-slate-200">
+                      <ul class="list-disc list-inside space-y-0.5 text-slate-200 max-h-32 overflow-y-auto">
                         <template x-for="hw in getMissingHomeworks(student.id)" :key="hw.id">
                           <li x-text="hw.title"></li>
                         </template>
@@ -328,9 +344,59 @@
                     </div>
                   </td>
 
-                  <td class="py-2.5 px-3 font-bold text-amber-500" x-text="getCorrectionHomeworks(student.id).length"></td>
-                  <td class="py-2.5 px-3 font-bold text-orange-500" x-text="getPendingHomeworks(student.id).length"></td>
-                  <td class="py-2.5 px-3 font-bold text-purple-600" x-text="getAbsentHomeworks(student.id).length"></td>
+                  <!-- 3. 待改正 -->
+                  <td class="py-2.5 px-3 relative group">
+                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 cursor-pointer"
+                          x-text="getCorrectionHomeworks(student.id).length"></span>
+                    <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
+                         class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">⚠️ 待改正功課：</p>
+                      <template x-if="getCorrectionHomeworks(student.id).length === 0">
+                        <p class="text-slate-400">無待改正項目 ✨</p>
+                      </template>
+                      <ul class="list-disc list-inside space-y-0.5 text-slate-200 max-h-32 overflow-y-auto">
+                        <template x-for="hw in getCorrectionHomeworks(student.id)" :key="hw.id">
+                          <li x-text="hw.title"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </td>
+
+                  <!-- 4. 待補交 -->
+                  <td class="py-2.5 px-3 relative group">
+                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 cursor-pointer"
+                          x-text="getPendingHomeworks(student.id).length"></span>
+                    <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
+                         class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">⏳ 待補交功課：</p>
+                      <template x-if="getPendingHomeworks(student.id).length === 0">
+                        <p class="text-slate-400">無待補交項目 ✨</p>
+                      </template>
+                      <ul class="list-disc list-inside space-y-0.5 text-slate-200 max-h-32 overflow-y-auto">
+                        <template x-for="hw in getPendingHomeworks(student.id)" :key="hw.id">
+                          <li x-text="hw.title"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </td>
+
+                  <!-- 5. 缺席 -->
+                  <td class="py-2.5 px-3 relative group">
+                    <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 cursor-pointer"
+                          x-text="getAbsentHomeworks(student.id).length"></span>
+                    <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
+                         class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                      <p class="font-bold border-b border-slate-700 pb-1 mb-1">🌙 缺席時的功課：</p>
+                      <template x-if="getAbsentHomeworks(student.id).length === 0">
+                        <p class="text-slate-400">無缺席紀錄 ✨</p>
+                      </template>
+                      <ul class="list-disc list-inside space-y-0.5 text-slate-200 max-h-32 overflow-y-auto">
+                        <template x-for="hw in getAbsentHomeworks(student.id)" :key="hw.id">
+                          <li x-text="hw.title"></li>
+                        </template>
+                      </ul>
+                    </div>
+                  </td>
                 </tr>
               </template>
             </tbody>
@@ -365,7 +431,7 @@
                     <input type="number" :value="getSelectedQuiz().maxScore" @wheel="$event.target.blur()" @change="updateQuizMaxScore($event.target.value)" class="w-16 px-2 py-0.5 border rounded-lg text-xs dark:bg-slate-700 font-bold">
                   </div>
                 </div>
-                <button @click="showQuizConfigModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-xl font-bold">⚙️ 設定合格標準</button>
+                <button @click="showQuizConfigModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-xl font-bold">⚙️ 設定合格標準與等級區段</button>
               </div>
 
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -458,13 +524,13 @@
         </template>
       </div>
 
-      <!-- ==================== 5. 課室座位表 ==================== -->
+      <!-- ==================== 5. 課室座位表 (修改點 3：支援拖動換位) ==================== -->
       <div x-show="currentTab === 'seating'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
           <div class="flex flex-wrap justify-between items-center gap-3">
             <div>
               <h2 class="text-lg font-bold" x-text="`🪑 ${currentClass} 班課室座位表`"></h2>
-              <p class="text-xs text-slate-400 font-medium" x-text="`目前規格：${seatingGridRows} 行 × ${seatingGridCols} 列 (共 ${seatingGridRows * seatingGridCols} 個座位)`"></p>
+              <p class="text-xs text-slate-400 font-medium">💡 提示：您可以使用「🎲 智慧隨機排位」，也可以按住學生座位直接拖拽手動換位！</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-2">
@@ -484,15 +550,21 @@
                :style="`grid-template-columns: repeat(${seatingGridCols}, minmax(110px, 1fr));`">
             <template x-for="r in seatingGridRows" :key="r">
               <template x-for="c in seatingGridCols" :key="c">
-                <div class="p-2.5 bg-white dark:bg-slate-800 border rounded-2xl flex flex-col justify-between items-center h-24 shadow-sm relative"
-                     :class="getSeatStudent(r, c) ? 'border-slate-200 dark:border-slate-700' : 'border-dashed border-slate-300 dark:border-slate-700/60'">
+                <div class="p-2.5 bg-white dark:bg-slate-800 border rounded-2xl flex flex-col justify-between items-center h-24 shadow-sm relative transition-all duration-150"
+                     :class="[
+                       getSeatStudent(r, c) ? 'border-slate-200 dark:border-slate-700 cursor-grab active:cursor-grabbing hover:border-indigo-500 hover:shadow-md' : 'border-dashed border-slate-300 dark:border-slate-700/60 hover:border-indigo-400'
+                     ]"
+                     :draggable="getSeatStudent(r, c) ? 'true' : 'false'"
+                     @dragstart="handleSeatDragStart($event, r, c)"
+                     @dragover.prevent=""
+                     @drop="handleSeatDrop($event, r, c)">
                   
-                  <span class="text-[10px] text-slate-400 font-mono self-start" x-text="`R${r}-C${c}`"></span>
+                  <span class="text-[10px] text-slate-400 font-mono self-start pointer-events-none" x-text="`R${r}-C${c}`"></span>
 
                   <template x-if="getSeatStudent(r, c)">
-                    <div class="text-center w-full">
+                    <div class="text-center w-full pointer-events-none">
                       <p class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400" x-text="`#${getSeatStudent(r, c).no || '-'}`"></p>
-                      <button @click="openStudentProfile(getSeatStudent(r, c).id)" class="text-xs font-bold text-slate-800 dark:text-slate-100 hover:underline truncate max-w-full block mx-auto" x-text="getSeatStudent(r, c).name"></button>
+                      <span class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate max-w-full block mx-auto" x-text="getSeatStudent(r, c).name"></span>
                       
                       <div class="flex justify-center space-x-1 mt-1">
                         <template x-if="getSeatStudent(r, c).isTall"><span class="text-[9px] bg-blue-100 text-blue-700 px-1 rounded">高</span></template>
@@ -503,7 +575,7 @@
                   </template>
 
                   <template x-if="!getSeatStudent(r, c)">
-                    <span class="text-xs text-slate-300 dark:text-slate-600 font-medium">空位</span>
+                    <span class="text-xs text-slate-300 dark:text-slate-600 font-medium pointer-events-none">空位</span>
                   </template>
                 </div>
               </template>
@@ -791,17 +863,36 @@
     </div>
   </div>
 
-  <!-- 彈窗 5：測驗合格標準設定 -->
+  <!-- 彈窗 5：測驗合格標準與等級區段設定 (修改點 2：整合等級區段功能) -->
   <div x-show="showQuizConfigModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3">
-      <h3 class="font-bold text-lg">⚙️ 設定測驗合格標準</h3>
-      <div class="space-y-2 text-sm">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      <h3 class="font-bold text-lg border-b pb-2 dark:border-slate-700">⚙️ 設定測驗合格標準與成績區段</h3>
+      
+      <div class="space-y-3 text-sm">
         <div>
-          <label class="block text-xs text-slate-500 font-medium">及格標準百分比 (%)</label>
+          <label class="block text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-1">1. 及格標準百分比 (%)</label>
           <input type="number" x-model.number="quizConfig.passPct" @wheel="$event.target.blur()" class="w-full px-3 py-1.5 border rounded-xl dark:bg-slate-700 font-bold">
         </div>
+
+        <div class="border-t pt-2 dark:border-slate-700 space-y-2">
+          <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400">2. 自訂圖表 4 階分數等級門檻 (%)：</p>
+          
+          <div class="grid grid-cols-3 gap-2 text-xs items-center">
+            <span class="text-slate-500 font-bold">中等門檻：</span>
+            <input type="number" x-model.number="quizConfig.lvl2" class="col-span-2 px-2.5 py-1 border rounded-lg dark:bg-slate-700 font-bold" placeholder="70">
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs items-center">
+            <span class="text-slate-500 font-bold">良好門檻：</span>
+            <input type="number" x-model.number="quizConfig.lvl3" class="col-span-2 px-2.5 py-1 border rounded-lg dark:bg-slate-700 font-bold" placeholder="80">
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs items-center">
+            <span class="text-slate-500 font-bold">優秀門檻：</span>
+            <input type="number" x-model.number="quizConfig.lvl4" class="col-span-2 px-2.5 py-1 border rounded-lg dark:bg-slate-700 font-bold" placeholder="90">
+          </div>
+        </div>
       </div>
-      <div class="flex justify-end pt-2">
+
+      <div class="flex justify-end pt-2 border-t dark:border-slate-700">
         <button @click="saveDataToFirebase(); showQuizConfigModal = false; showQuizChart = false;" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存設定</button>
       </div>
     </div>
@@ -907,6 +998,7 @@ const firebaseConfig = {
         seatingGridRows: 5,
         seatingGridCols: 6,
         seatingAssignments: {},
+        draggedSeat: null, // 拖動換位暫存數據
 
         batchInputText: '',
         showCategoryModal: false,
@@ -924,7 +1016,9 @@ const firebaseConfig = {
 
         presetCategories: ['未帶計算機', '未帶課本', '未帶功課', '課堂生事', '遲到'],
         newCategoryName: '',
-        quizConfig: { passPct: 60 },
+        
+        // 修改點 2：新增預設分數等級門檻
+        quizConfig: { passPct: 50, lvl2: 70, lvl3: 80, lvl4: 90 },
 
         themeOptions: [
           { key: 'indigo', name: '經典靛藍', color: '#4f46e5', headerBg: 'bg-indigo-600 dark:bg-indigo-900', btnBg: 'bg-indigo-600 text-white shadow-md' },
@@ -944,7 +1038,6 @@ const firebaseConfig = {
         incidents: [],
         newIncident: { studentId: '', date: new Date().toISOString().split('T')[0], category: '未帶計算機', note: '' },
 
-        // 重置記憶體數據方法 (避免切換帳號時數據混淆)
         resetState() {
           this.classes = ['3A', '3B'];
           this.currentClass = '3A';
@@ -960,6 +1053,7 @@ const firebaseConfig = {
           this.archives = [];
           this.selectedHomeworkId = null;
           this.selectedQuizId = null;
+          this.quizConfig = { passPct: 50, lvl2: 70, lvl3: 80, lvl4: 90 };
         },
 
         initApp() {
@@ -973,7 +1067,7 @@ const firebaseConfig = {
           auth.onAuthStateChanged(u => {
             this.user = u;
             if (u) {
-              this.resetState(); // 登入時先清空記憶體中的舊帳號數據
+              this.resetState();
               this.loadDataFromFirebase();
             } else {
               this.resetState();
@@ -1003,7 +1097,7 @@ const firebaseConfig = {
               if (data.classes) this.classes = data.classes;
               if (data.currentTheme) this.currentTheme = data.currentTheme;
               if (data.presetCategories) this.presetCategories = data.presetCategories;
-              if (data.quizConfig) this.quizConfig = data.quizConfig;
+              if (data.quizConfig) this.quizConfig = Object.assign({ passPct: 50, lvl2: 70, lvl3: 80, lvl4: 90 }, data.quizConfig);
               if (data.students) this.students = data.students;
               if (data.homeworks) this.homeworks = data.homeworks;
               if (data.quizzes) this.quizzes = data.quizzes;
@@ -1020,7 +1114,6 @@ const firebaseConfig = {
               this.autoSelectFirstHomework();
               this.autoSelectFirstQuiz();
             } else {
-              // 全新帳號：保持完全空白獨立狀態
               this.resetState();
             }
           } catch (e) {
@@ -1274,6 +1367,7 @@ const firebaseConfig = {
           });
         },
 
+        // 修改點 2：動態讀取自訂分數區段門檻繪製圖表
         generateQuizChart() {
           const q = this.getSelectedQuiz();
           if (!q) return;
@@ -1284,6 +1378,11 @@ const firebaseConfig = {
               const canvas = document.getElementById('quizChartCanvas');
               if (!canvas) return;
 
+              const pass = Number(this.quizConfig.passPct) || 50;
+              const l2 = Number(this.quizConfig.lvl2) || 70;
+              const l3 = Number(this.quizConfig.lvl3) || 80;
+              const l4 = Number(this.quizConfig.lvl4) || 90;
+
               const scores = this.currentStudents
                 .map(s => this.getQuizScore(q.id, s.id))
                 .filter(v => v !== '' && v !== undefined && v !== null);
@@ -1291,10 +1390,10 @@ const firebaseConfig = {
               const counts = [0, 0, 0, 0, 0];
               scores.forEach(s => {
                 const pct = (Number(s) / q.maxScore) * 100;
-                if (pct >= 90) counts[4]++;
-                else if (pct >= 80) counts[3]++;
-                else if (pct >= 70) counts[2]++;
-                else if (pct >= 60) counts[1]++;
+                if (pct >= l4) counts[4]++;
+                else if (pct >= l3) counts[3]++;
+                else if (pct >= l2) counts[2]++;
+                else if (pct >= pass) counts[1]++;
                 else counts[0]++;
               });
 
@@ -1307,7 +1406,13 @@ const firebaseConfig = {
               this.chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                  labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
+                  labels: [
+                    `不及格 (<${pass}%)`,
+                    `及格 (${pass}-${l2 - 1}%)`,
+                    `中等 (${l2}-${l3 - 1}%)`,
+                    `良好 (${l3}-${l4 - 1}%)`,
+                    `優秀 (≥${l4}%)`
+                  ],
                   datasets: [{
                     label: '人數',
                     data: counts,
@@ -1449,6 +1554,45 @@ const firebaseConfig = {
             return pos && pos.r === r && pos.c === c;
           });
           return this.students.find(s => s.id === studentId);
+        },
+
+        // 修改點 3：座位拖動換位處理邏輯
+        handleSeatDragStart(event, r, c) {
+          const student = this.getSeatStudent(r, c);
+          if (!student) return;
+          this.draggedSeat = { r, c, studentId: student.id };
+          event.dataTransfer.effectAllowed = 'move';
+        },
+
+        handleSeatDrop(event, targetR, targetC) {
+          event.preventDefault();
+          if (!this.draggedSeat) return;
+
+          const sourceR = this.draggedSeat.r;
+          const sourceC = this.draggedSeat.c;
+          const sourceStudentId = this.draggedSeat.studentId;
+
+          if (sourceR === targetR && sourceC === targetC) {
+            this.draggedSeat = null;
+            return;
+          }
+
+          if (!this.seatingAssignments) this.seatingAssignments = {};
+          if (!this.seatingAssignments[this.currentClass]) this.seatingAssignments[this.currentClass] = {};
+
+          const targetStudent = this.getSeatStudent(targetR, targetC);
+
+          if (targetStudent) {
+            // 對調座位
+            this.seatingAssignments[this.currentClass][sourceStudentId] = { r: targetR, c: targetC };
+            this.seatingAssignments[this.currentClass][targetStudent.id] = { r: sourceR, c: sourceC };
+          } else {
+            // 移動到空位
+            this.seatingAssignments[this.currentClass][sourceStudentId] = { r: targetR, c: targetC };
+          }
+
+          this.draggedSeat = null;
+          this.saveDataToFirebase();
         },
 
         toggleAvoidStudent(student, targetId) {
