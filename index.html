@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>課堂管理系統</title>
+  <!-- 鎖定滾動條寬度，徹底消除切換頁面/班別時的畫面左右跳動問題 -->
+  <style>
+    html {
+      scrollbar-gutter: stable;
+    }
+  </style>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
@@ -111,7 +117,7 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 主頁：行事曆與待辦事項 ==================== -->
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 (雙欄卡片版) ==================== -->
       <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 dark:border-slate-700">
           <div>
@@ -132,30 +138,34 @@
           <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow transition">+ 新增待辦事項</button>
         </div>
 
-        <div class="space-y-2 pt-2">
+        <!-- 改為雙欄網格 (grid-cols-1 md:grid-cols-2) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
           <template x-for="todo in getSortedTodos()" :key="todo.id">
-            <div class="flex items-center justify-between p-3.5 rounded-xl border transition text-sm" :class="getTaskStatusClass(todo)">
-              <div class="flex items-center space-x-3">
-                <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer">
-                <span class="font-bold" x-text="todo.text"></span>
+            <div class="p-4 rounded-xl border transition text-sm flex flex-col justify-between space-y-3 shadow-sm" :class="getTaskStatusClass(todo)">
+              <!-- 卡片第一行：勾選框與內容 -->
+              <div class="flex items-start space-x-3">
+                <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer mt-0.5">
+                <span class="font-bold text-slate-800 dark:text-slate-100 leading-snug break-words flex-1" x-text="todo.text"></span>
               </div>
               
-              <!-- 可修改截止日期欄位 -->
-              <div class="flex items-center space-x-3 font-mono">
+              <!-- 卡片第二行：截止日期選擇、狀態標籤與刪除 -->
+              <div class="flex items-center justify-between pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs font-mono">
                 <div class="flex items-center space-x-1">
-                  <span class="text-xs text-slate-500 font-sans">截止日期:</span>
+                  <span class="text-[11px] text-slate-500 font-sans">截止:</span>
                   <input type="date" 
                          :value="todo.date" 
                          @change="updateTodoDate(todo.id, $event.target.value)" 
                          class="text-xs px-2 py-0.5 border rounded-lg dark:bg-slate-700 dark:border-slate-600 font-mono font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-indigo-500 transition">
                 </div>
-                <span class="px-2.5 py-1 rounded-lg text-xs" :class="getTaskBadge(todo).class" x-text="getTaskBadge(todo).text"></span>
-                <button @click="deleteTodo(todo.id)" class="text-red-500 hover:underline text-xs font-bold">刪除</button>
+                <div class="flex items-center space-x-2">
+                  <span class="px-2.5 py-1 rounded-lg text-xs" :class="getTaskBadge(todo).class" x-text="getTaskBadge(todo).text"></span>
+                  <button @click="deleteTodo(todo.id)" class="text-red-500 hover:underline text-xs font-bold">刪除</button>
+                </div>
               </div>
             </div>
           </template>
           <template x-if="todos.length === 0">
-            <div class="text-center py-8 text-slate-400 text-sm">目前尚無任何待辦事項，太棒了！🎉</div>
+            <div class="col-span-full text-center py-8 text-slate-400 text-sm">目前尚無任何待辦事項，太棒了！🎉</div>
           </template>
         </div>
       </div>
@@ -1053,7 +1063,6 @@ const firebaseConfig = {
         incidents: [],
         newIncident: { studentId: '', date: '', category: '未帶計算機', note: '' },
 
-        // 時區修復：獲取本地當前日期的標準字串 (YYYY-MM-DD)
         getLocalToday() {
           const d = new Date();
           const year = d.getFullYear();
@@ -1225,7 +1234,6 @@ const firebaseConfig = {
           this.saveDataToFirebase();
         },
 
-        // 時區修復：對比本地真正的日期
         getTaskStatusClass(todo) {
           if (todo.completed) return 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-slate-400 line-through';
           
