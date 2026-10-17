@@ -86,7 +86,7 @@
     <!-- 主內容區 -->
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
       
-      <!-- 當前班別選擇列（修改點 1：行事曆頁面隱藏班別列） -->
+      <!-- 當前班別選擇列 -->
       <div class="space-y-2">
         <template x-if="viewingArchiveId">
           <div class="bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex justify-between items-center shadow">
@@ -111,7 +111,7 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 主頁：行事曆與待辦事項 (修改點 2：可隨時修改截止日期) ==================== -->
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 ==================== -->
       <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 dark:border-slate-700">
           <div>
@@ -527,7 +527,7 @@
         </template>
       </div>
 
-      <!-- ==================== 5. 課室座位表 (修改點 3：釘選固定位置) ==================== -->
+      <!-- ==================== 5. 課室座位表 ==================== -->
       <div x-show="currentTab === 'seating'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
           <div class="flex flex-wrap justify-between items-center gap-3">
@@ -1003,7 +1003,7 @@ const firebaseConfig = {
         todos: [],
         todoSortMode: 'date',
         quickTodoText: '',
-        quickTodoDate: new Date().toISOString().split('T')[0],
+        quickTodoDate: '',
 
         classes: ['3A', '3B'],
         currentClass: '3A',
@@ -1051,7 +1051,16 @@ const firebaseConfig = {
         records: {}, 
         quizScores: {},
         incidents: [],
-        newIncident: { studentId: '', date: new Date().toISOString().split('T')[0], category: '未帶計算機', note: '' },
+        newIncident: { studentId: '', date: '', category: '未帶計算機', note: '' },
+
+        // 時區修復：獲取本地當前日期的標準字串 (YYYY-MM-DD)
+        getLocalToday() {
+          const d = new Date();
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        },
 
         resetState() {
           this.classes = ['3A', '3B'];
@@ -1069,9 +1078,14 @@ const firebaseConfig = {
           this.selectedHomeworkId = null;
           this.selectedQuizId = null;
           this.quizConfig = { passPct: 50, lvl2: 70, lvl3: 80, lvl4: 90 };
+          this.quickTodoDate = this.getLocalToday();
+          this.newIncident.date = this.getLocalToday();
         },
 
         initApp() {
+          this.quickTodoDate = this.getLocalToday();
+          this.newIncident.date = this.getLocalToday();
+
           if (localStorage.getItem('theme') === 'dark') {
             this.isDarkMode = true;
             document.documentElement.classList.add('dark');
@@ -1175,7 +1189,7 @@ const firebaseConfig = {
           this.todos.push({
             id: 'todo_' + Date.now(),
             text: this.quickTodoText.trim(),
-            date: this.quickTodoDate || new Date().toISOString().split('T')[0],
+            date: this.quickTodoDate || this.getLocalToday(),
             completed: false
           });
           this.quickTodoText = '';
@@ -1189,7 +1203,6 @@ const firebaseConfig = {
           return this.todos;
         },
 
-        // 修改點 2：更新待辦事項日期
         updateTodoDate(todoId, newDate) {
           if (!newDate) return;
           const t = this.todos.find(item => item.id === todoId);
@@ -1212,9 +1225,12 @@ const firebaseConfig = {
           this.saveDataToFirebase();
         },
 
+        // 時區修復：對比本地真正的日期
         getTaskStatusClass(todo) {
           if (todo.completed) return 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-slate-400 line-through';
-          const today = new Date().toISOString().split('T')[0];
+          
+          const today = this.getLocalToday();
+          
           if (todo.date < today) {
             return 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 animate-pulse';
           } else if (todo.date === today) {
@@ -1226,7 +1242,9 @@ const firebaseConfig = {
 
         getTaskBadge(todo) {
           if (todo.completed) return { text: '✅ 已完成', class: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 font-bold' };
-          const today = new Date().toISOString().split('T')[0];
+          
+          const today = this.getLocalToday();
+          
           if (todo.date < today) return { text: '🚨 已逾期', class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 font-bold' };
           if (todo.date === today) return { text: '⏰ 今天截止', class: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 font-bold' };
           return { text: '📌 進行中', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold' };
@@ -1493,7 +1511,6 @@ const firebaseConfig = {
           return this.incidents.filter(i => i.studentId === studentId);
         },
 
-        // 修改點 3：支援釘選座位的智慧隨機排位演算法
         smartRandomizeSeats() {
           const students = this.currentStudents;
           const R = this.seatingGridRows;
@@ -1507,7 +1524,6 @@ const firebaseConfig = {
           const pinnedSlotsKeys = new Set();
           const fixedAssignment = {};
 
-          // 鎖定已被釘選的學生
           students.forEach(st => {
             const pos = currentClassAssignments[st.id];
             if (pos && pos.pinned && pos.r <= R && pos.c <= C) {
@@ -1516,7 +1532,6 @@ const firebaseConfig = {
             }
           });
 
-          // 找出未釘選學生與剩餘可用空座位
           const unpinnedStudents = students.filter(st => !fixedAssignment[st.id]);
           let remainingSlots = [];
           for (let r = 1; r <= R; r++) {
@@ -1535,7 +1550,6 @@ const firebaseConfig = {
             let currentAssignment = { ...fixedAssignment };
             let gridMatrix = {};
             
-            // 寫入釘選位置矩陣
             Object.keys(fixedAssignment).forEach(sId => {
               const p = fixedAssignment[sId];
               gridMatrix[`${p.r}_${p.c}`] = sId;
@@ -1557,7 +1571,6 @@ const firebaseConfig = {
 
             if (!valid) continue;
 
-            // 檢查避開同學限制
             for (let st of students) {
               const pos = currentAssignment[st.id];
               if (!pos) continue;
@@ -1606,7 +1619,6 @@ const firebaseConfig = {
           return this.students.find(s => s.id === studentId);
         },
 
-        // 修改點 3：切換釘選狀態與判斷
         togglePinSeat(r, c) {
           const st = this.getSeatStudent(r, c);
           if (!st) return;
@@ -2067,7 +2079,7 @@ const firebaseConfig = {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `課堂管理系統備份_${new Date().toISOString().split('T')[0]}.json`;
+          a.download = `課堂管理系統備份_${this.getLocalToday()}.json`;
           a.click();
         },
 
@@ -2116,26 +2128,4 @@ const firebaseConfig = {
               row[`功課: ${hw.title}`] = st === 'completed' ? '已完成' : st === 'missing' ? '未交' : st === 'correction' ? '待改正' : st === 'pending' ? '待補交' : '缺席';
             });
             this.currentQuizzes.forEach(q => {
-              row[`測驗: ${q.title}`] = this.getQuizScore(q.id, s.id);
-            });
-            return row;
-          });
-          const ws1 = XLSX.utils.json_to_sheet(hwData);
-          XLSX.utils.book_append_sheet(wb, ws1, "功課與測驗總表");
-
-          const incData = this.currentIncidents.map(i => ({
-            '日期': i.date,
-            '學生': this.getStudentName(i.studentId),
-            '事件項目': i.category,
-            '備註': i.note
-          }));
-          const ws2 = XLSX.utils.json_to_sheet(incData);
-          XLSX.utils.book_append_sheet(wb, ws2, "課堂事件紀錄");
-
-          XLSX.writeFile(wb, `課堂管理系統報表_${this.currentClass}.xlsx`);
-        }
-      }
-    }
-  </script>
-</body>
-</html>
+              row[`測驗: ${q.title}`] = this.getQuizScore(q.id
