@@ -4,14 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>課堂管理系統</title>
+  
   <!-- 網頁分頁標籤圖示 (Favicon) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+  
   <!-- 鎖定滾動條寬度，徹底消除切換頁面/班別時的畫面左右跳動問題 -->
   <style>
     html {
       scrollbar-gutter: stable;
     }
   </style>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
@@ -58,7 +61,7 @@
           </div>
         </div>
 
-        <!-- 頁籤選單 -->
+        <!-- 頁籤選單與頂部工具按鈕 -->
         <div class="flex flex-wrap items-center gap-2">
           <nav class="flex bg-black/20 p-1 rounded-lg text-sm font-medium">
             <button @click="switchTab('calendar')" :class="currentTab === 'calendar' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📅 行事曆待辦</button>
@@ -73,19 +76,18 @@
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 Excel</button>
           <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 備份</button>
           
-          <div class="flex items-center space-x-1 bg-black/20 p-1 rounded-lg">
+          <!-- 改為主題顏色下拉選單 -->
+          <select x-model="currentTheme" @change="setThemeColor($event.target.value)" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg border border-white/20 font-medium cursor-pointer focus:outline-none">
             <template x-for="t in themeOptions" :key="t.key">
-              <button @click="setThemeColor(t.key)" 
-                      :title="t.name"
-                      :class="currentTheme === t.key ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'"
-                      class="w-5 h-5 rounded-full transition transform border border-white/30"
-                      :style="`background-color: ${t.color};`"></button>
+              <option :value="t.key" x-text="`🎨 ${t.name}`" class="text-slate-800 bg-white dark:bg-slate-800 dark:text-slate-100"></option>
             </template>
-          </div>
+          </select>
 
-          <button @click="toggleDarkMode()" class="bg-black/30 p-2 rounded-lg text-sm hover:bg-black/40 transition">
+          <!-- 切換模式按鈕：固定寬度 w-20 避免長度變化導致換行跳動 -->
+          <button @click="toggleDarkMode()" class="w-20 bg-black/30 hover:bg-black/40 text-white text-xs py-1.5 rounded-lg font-medium border border-white/20 transition text-center">
             <span x-text="isDarkMode ? '☀️ Day' : '🌙 Dark'"></span>
           </button>
+          
           <button @click="logoutGoogle()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium border border-white/20">登出</button>
         </div>
       </div>
@@ -140,7 +142,7 @@
           <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow transition">+ 新增待辦事項</button>
         </div>
 
-        <!-- 改為雙欄網格 (grid-cols-1 md:grid-cols-2) -->
+        <!-- 雙欄網格 (grid-cols-1 md:grid-cols-2) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
           <template x-for="todo in getSortedTodos()" :key="todo.id">
             <div class="p-4 rounded-xl border transition text-sm flex flex-col justify-between space-y-3 shadow-sm" :class="getTaskStatusClass(todo)">
