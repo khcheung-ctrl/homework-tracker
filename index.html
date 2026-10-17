@@ -36,14 +36,13 @@
 
   <!-- 主介面區塊 -->
   <div x-show="user">
-    <!-- 頂部導覽列 (含點擊修改學期名稱) -->
+    <!-- 頂部導覽列 -->
     <header :class="getThemeHeaderClass()" class="text-white shadow-md transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
           <span class="text-2xl">📚</span>
           <div>
             <h1 class="text-xl font-bold tracking-wide">課堂管理系統</h1>
-            <!-- 點擊學期名稱即可修改 -->
             <p @click="editSemesterName()" class="text-[10px] opacity-80 cursor-pointer hover:underline hover:opacity-100 flex items-center gap-1 transition" title="點擊即可修改學期名稱">
               <span x-text="`目前學期：${currentSemesterName}`"></span>
               <span class="text-[9px]">✏️</span>
@@ -66,7 +65,6 @@
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 Excel</button>
           <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 備份</button>
           
-          <!-- 精簡主題色彩選單 -->
           <div class="flex items-center space-x-1 bg-black/20 p-1 rounded-lg">
             <template x-for="t in themeOptions" :key="t.key">
               <button @click="setThemeColor(t.key)" 
@@ -121,7 +119,6 @@
             <p class="text-xs text-slate-400">在此管理教學任務與作業/測驗截止日，逾期項目將自動發出紅色警示。</p>
           </div>
           
-          <!-- 排序切換按鈕 -->
           <div class="flex items-center space-x-2">
             <span class="text-xs text-slate-400 font-bold">排序：</span>
             <button @click="todoSortMode = 'date'" :class="todoSortMode === 'date' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 rounded-lg text-xs font-bold transition">📅 按截止日期</button>
@@ -173,7 +170,6 @@
 
         <template x-if="getSelectedHomework()">
           <div class="space-y-6">
-            <!-- 6 大數據卡片 -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm text-slate-700 dark:text-slate-200">
                 <p class="text-xs text-slate-500 font-medium">全班人數</p>
@@ -201,7 +197,6 @@
               </div>
             </div>
 
-            <!-- 作業詳細登記 (雙欄縱向直排) -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
               <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 class="text-lg font-bold flex items-center space-x-2">
@@ -289,12 +284,12 @@
         </template>
       </div>
 
-      <!-- ==================== 3. 學生整體總覽 ==================== -->
+      <!-- ==================== 3. 學生整體總覽 (修復問題一：動態智慧定位浮動視窗) ==================== -->
       <div x-show="currentTab === 'overview'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
         <h2 class="text-lg font-bold" x-text="`${currentClass} 班學生交功課整體情況`"></h2>
         <p class="text-xs text-slate-400">💡 提示：點擊姓名可開啟個人檔案（含成績趨勢圖）；移動至未交數字可查看功課清單。</p>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto pb-12">
           <table class="w-full text-left text-sm">
             <thead>
               <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-medium">
@@ -313,10 +308,14 @@
                   <td class="py-2.5 px-3 font-mono text-slate-500" x-text="student.no || (sIdx + 1)"></td>
                   <td class="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" @click="openStudentProfile(student.id)" x-text="student.name"></td>
                   <td class="py-2.5 px-3 font-bold text-emerald-600" x-text="getCompletedHomeworks(student.id).length"></td>
+                  
+                  <!-- 未交數量與智慧向上/向下彈出視窗 -->
                   <td class="py-2.5 px-3 relative group">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 cursor-pointer"
                           x-text="getMissingHomeworks(student.id).length"></span>
-                    <div class="hidden group-hover:block absolute left-0 top-full mt-1 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
+                    
+                    <div :class="sIdx >= (getSortedStudents().length - 4) ? 'bottom-full mb-1' : 'top-full mt-1'"
+                         class="hidden group-hover:block absolute left-0 w-52 bg-slate-900 text-white text-xs rounded-xl p-3 shadow-2xl z-50 pointer-events-none">
                       <p class="font-bold border-b border-slate-700 pb-1 mb-1">未交功課清單：</p>
                       <template x-if="getMissingHomeworks(student.id).length === 0">
                         <p class="text-slate-400">已全部繳交 ✨</p>
@@ -328,6 +327,7 @@
                       </ul>
                     </div>
                   </td>
+
                   <td class="py-2.5 px-3 font-bold text-amber-500" x-text="getCorrectionHomeworks(student.id).length"></td>
                   <td class="py-2.5 px-3 font-bold text-orange-500" x-text="getPendingHomeworks(student.id).length"></td>
                   <td class="py-2.5 px-3 font-bold text-purple-600" x-text="getAbsentHomeworks(student.id).length"></td>
@@ -387,7 +387,6 @@
                 </div>
               </div>
 
-              <!-- 手動繪製圖表 -->
               <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 space-y-3">
                 <div class="flex justify-between items-center">
                   <p class="text-xs font-bold text-slate-500">📊 全班成績等級區段分佈圖：</p>
@@ -410,7 +409,6 @@
               </div>
             </div>
 
-            <!-- 分數登記區 -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
               <h3 class="font-bold text-md mb-3" x-text="`💯 ${getSelectedQuiz().title} 分數登記`"></h3>
               
@@ -555,7 +553,6 @@
       <!-- ==================== 7. 設定與歷史學期歸檔 ==================== -->
       <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        <!-- 歷史學期歸檔管理 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
           <div class="flex justify-between items-center border-b pb-3 dark:border-slate-700">
             <div>
@@ -587,7 +584,6 @@
           </div>
         </div>
 
-        <!-- 班別管理 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-5">
           <h2 class="text-lg font-bold">1. 班別管理</h2>
           <div class="flex space-x-2">
@@ -608,7 +604,6 @@
           </div>
         </div>
 
-        <!-- 批量導入學生 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
           <h2 class="text-lg font-bold">
             <span>2. 批量導入學生名單到 </span>
@@ -622,7 +617,6 @@
           </div>
         </div>
 
-        <!-- JSON 備份還原 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
           <h2 class="text-lg font-bold">3. 資料庫離線備份與還原 (JSON)</h2>
           <p class="text-xs text-slate-400">您可以下載 JSON 備份檔案存放在電腦，或者上傳舊有備份檔案進行還原。</p>
@@ -639,7 +633,7 @@
     </main>
   </div>
 
-  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 -->
+  <!-- 彈窗 1：個人學生檔案 -->
   <div x-show="showStudentProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <template x-if="profileStudent">
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
@@ -654,7 +648,6 @@
           <button @click="showStudentProfileModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
         </div>
 
-        <!-- 個人統計 4 大卡片 -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
             <p class="text-indigo-500 font-bold">個人平均分</p>
@@ -677,7 +670,6 @@
           </div>
         </div>
 
-        <!-- 個人測驗分數折線趨勢圖 -->
         <div class="space-y-2 border-t pt-3 dark:border-slate-700">
           <p class="text-xs font-bold text-slate-500">📈 個人歷次測驗分數趨勢折線圖：</p>
           <div class="w-full relative min-h-[180px] bg-slate-50 dark:bg-slate-900/50 rounded-xl p-2">
@@ -944,16 +936,31 @@ const firebaseConfig = {
           { key: 'amber', name: '琥珀暖橙', color: '#d97706', headerBg: 'bg-amber-600 dark:bg-amber-900', btnBg: 'bg-amber-600 text-white shadow-md' }
         ],
 
-        students: [
-          { id: 's1', class: '3A', no: '01', name: '張小明', isTall: false, frontRow: false, backRow: false, avoidIds: [] },
-          { id: 's2', class: '3A', no: '02', name: '李大衛', isTall: true, frontRow: false, backRow: false, avoidIds: [] }
-        ],
-        homeworks: [{ id: 'h1', class: '3A', title: '工作紙5' }],
-        quizzes: [{ id: 'q1', class: '3A', title: '單元一小測', maxScore: 20 }],
+        students: [],
+        homeworks: [],
+        quizzes: [],
         records: {}, 
         quizScores: {},
         incidents: [],
         newIncident: { studentId: '', date: new Date().toISOString().split('T')[0], category: '未帶計算機', note: '' },
+
+        // 重置記憶體數據方法 (避免切換帳號時數據混淆)
+        resetState() {
+          this.classes = ['3A', '3B'];
+          this.currentClass = '3A';
+          this.currentSemesterName = '2026-2027 第一學期';
+          this.students = [];
+          this.homeworks = [];
+          this.quizzes = [];
+          this.records = {};
+          this.quizScores = {};
+          this.incidents = [];
+          this.seatingAssignments = {};
+          this.todos = [];
+          this.archives = [];
+          this.selectedHomeworkId = null;
+          this.selectedQuizId = null;
+        },
 
         initApp() {
           if (localStorage.getItem('theme') === 'dark') {
@@ -966,7 +973,10 @@ const firebaseConfig = {
           auth.onAuthStateChanged(u => {
             this.user = u;
             if (u) {
+              this.resetState(); // 登入時先清空記憶體中的舊帳號數據
               this.loadDataFromFirebase();
+            } else {
+              this.resetState();
             }
           });
         },
@@ -1009,6 +1019,9 @@ const firebaseConfig = {
 
               this.autoSelectFirstHomework();
               this.autoSelectFirstQuiz();
+            } else {
+              // 全新帳號：保持完全空白獨立狀態
+              this.resetState();
             }
           } catch (e) {
             console.error("載入失敗", e);
@@ -1041,7 +1054,6 @@ const firebaseConfig = {
           }
         },
 
-        // --- 點擊直接修改學期名稱方法 ---
         editSemesterName() {
           const newName = prompt('請輸入新的學期名稱：', this.currentSemesterName);
           if (newName && newName.trim()) {
@@ -1050,7 +1062,6 @@ const firebaseConfig = {
           }
         },
 
-        // --- 行事曆與待辦事項排序 ---
         addQuickTodo() {
           if (!this.quickTodoText.trim()) return;
           this.todos.push({
@@ -1103,7 +1114,6 @@ const firebaseConfig = {
           return { text: '📌 進行中', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold' };
         },
 
-        // --- 歷史學期歸檔邏輯 ---
         archiveCurrentSemesterPrompt() {
           const name = prompt('請輸入要歸檔封存的學期名稱：', this.currentSemesterName);
           if (!name) return;
@@ -1169,7 +1179,6 @@ const firebaseConfig = {
           }
         },
 
-        // --- 個人成績與與上次測驗比對邏輯 ---
         openStudentProfile(studentId) {
           const s = this.students.find(st => st.id === studentId);
           if (s) {
@@ -1265,7 +1274,6 @@ const firebaseConfig = {
           });
         },
 
-        // --- 手動生成全班測驗分佈圖 ---
         generateQuizChart() {
           const q = this.getSelectedQuiz();
           if (!q) return;
