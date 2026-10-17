@@ -36,7 +36,7 @@
 
   <!-- 主介面區塊 -->
   <div x-show="user">
-    <!-- 頂部導覽列 (整合精簡主題選擇) -->
+    <!-- 頂部導覽列 -->
     <header :class="getThemeHeaderClass()" class="text-white shadow-md transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
@@ -47,7 +47,7 @@
           </div>
         </div>
 
-        <!-- 頁籤選單 (需求 2：行事曆移至第 1 頁，功課移至第 2 頁) -->
+        <!-- 頁籤選單 -->
         <div class="flex flex-wrap items-center gap-2">
           <nav class="flex bg-black/20 p-1 rounded-lg text-sm font-medium">
             <button @click="switchTab('calendar')" :class="currentTab === 'calendar' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📅 行事曆待辦</button>
@@ -62,7 +62,7 @@
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 Excel</button>
           <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 備份</button>
           
-          <!-- 需求 3：精簡主題色彩選單 (位於黑白模式旁邊，不佔空間) -->
+          <!-- 精簡主題色彩選單 -->
           <div class="flex items-center space-x-1 bg-black/20 p-1 rounded-lg">
             <template x-for="t in themeOptions" :key="t.key">
               <button @click="setThemeColor(t.key)" 
@@ -97,7 +97,7 @@
           <div class="flex items-center space-x-3">
             <span class="text-sm font-semibold text-slate-500 dark:text-slate-400">當前班別：</span>
             <template x-for="cls in classes" :key="cls">
-              <button @click="currentClass = cls; autoSelectFirstHomework(); autoSelectFirstQuiz(); refreshChart();" 
+              <button @click="currentClass = cls; autoSelectFirstHomework(); autoSelectFirstQuiz(); showQuizChart = false;" 
                       :class="currentClass === cls ? getThemeButtonClass() : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200'"
                       class="px-4 py-1.5 rounded-xl font-bold text-sm transition" x-text="cls"></button>
             </template>
@@ -109,14 +109,20 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 主頁：行事曆與待辦事項 (需求 2：放在第 1 頁主頁) ==================== -->
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 (修改點 2：新增日期/新增順序排序功能) ==================== -->
       <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
-        <div class="flex justify-between items-center border-b pb-3 dark:border-slate-700">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 dark:border-slate-700">
           <div>
             <h2 class="text-lg font-bold">📅 主頁教學行事曆與待辦事項</h2>
             <p class="text-xs text-slate-400">在此管理教學任務與作業/測驗截止日，逾期項目將自動發出紅色警示。</p>
           </div>
-          <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-lg" x-text="`Today: ${new Date().toISOString().split('T')[0]}`"></span>
+          
+          <!-- 排序切換按鈕 -->
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400 font-bold">排序：</span>
+            <button @click="todoSortMode = 'date'" :class="todoSortMode === 'date' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 rounded-lg text-xs font-bold transition">📅 按截止日期</button>
+            <button @click="todoSortMode = 'created'" :class="todoSortMode === 'created' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'" class="px-2.5 py-1 rounded-lg text-xs font-bold transition">⏱️ 按新增順序</button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -126,7 +132,7 @@
         </div>
 
         <div class="space-y-2 pt-2">
-          <template x-for="todo in todos" :key="todo.id">
+          <template x-for="todo in getSortedTodos()" :key="todo.id">
             <div class="flex items-center justify-between p-3.5 rounded-xl border transition text-sm" :class="getTaskStatusClass(todo)">
               <div class="flex items-center space-x-3">
                 <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer">
@@ -145,7 +151,7 @@
         </div>
       </div>
 
-      <!-- ==================== 2. 按功課管理頁面 (需求 2：順延至第 2 頁) ==================== -->
+      <!-- ==================== 2. 按功課管理頁面 ==================== -->
       <div x-show="currentTab === 'homework'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -328,12 +334,12 @@
         </div>
       </div>
 
-      <!-- ==================== 4. 測驗成績分析 (需求 1：徹底修復圖表消失 Bug) ==================== -->
+      <!-- ==================== 4. 測驗成績分析 (修改點 1：改為手動按鈕生成圖表) ==================== -->
       <div x-show="currentTab === 'quiz'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
             <span class="text-sm font-bold text-slate-600 dark:text-slate-300">選擇測驗項目：</span>
-            <select x-model="selectedQuizId" @change="refreshChart()" class="border rounded-xl px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-600 font-medium min-w-[160px]">
+            <select x-model="selectedQuizId" @change="showQuizChart = false;" class="border rounded-xl px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-600 font-medium min-w-[160px]">
               <template x-for="q in currentQuizzes" :key="q.id">
                 <option :value="q.id" x-text="q.title"></option>
               </template>
@@ -377,16 +383,30 @@
                 </div>
               </div>
 
-              <!-- 需求 1：圖表容器加強修復，保證 100% 渲染 -->
-              <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <p class="text-xs font-bold text-slate-500 mb-3">📊 全班成績等級區段分佈圖：</p>
-                <div class="w-full relative min-h-[220px]">
-                  <canvas id="quizChartCanvas" style="display: block; width: 100%; height: 220px;"></canvas>
+              <!-- 修改點 1：手動按下按鈕才繪製並顯示圖表 -->
+              <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 space-y-3">
+                <div class="flex justify-between items-center">
+                  <p class="text-xs font-bold text-slate-500">📊 全班成績等級區段分佈圖：</p>
+                  <button @click="generateQuizChart()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow transition flex items-center space-x-1">
+                    <span>📊 產生 / 刷新統計圖表</span>
+                  </button>
                 </div>
+
+                <template x-if="showQuizChart">
+                  <div class="w-full relative min-h-[220px]">
+                    <canvas id="quizChartCanvas" style="display: block; width: 100%; height: 220px;"></canvas>
+                  </div>
+                </template>
+
+                <template x-if="!showQuizChart">
+                  <div class="bg-slate-50 dark:bg-slate-700/30 rounded-2xl p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 dark:border-slate-700">
+                    💡 登記完分數後，點擊右上方「產生 / 刷新統計圖表」按鈕即可即時生成圖表！
+                  </div>
+                </template>
               </div>
             </div>
 
-            <!-- 縱向垂直貫穿分數登記 -->
+            <!-- 分數登記區 (改為 change 觸發，不干擾輸入) -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
               <h3 class="font-bold text-md mb-3" x-text="`💯 ${getSelectedQuiz().title} 分數登記`"></h3>
               
@@ -402,7 +422,7 @@
                         <input type="number" 
                                :value="getQuizScore(selectedQuizId, student.id)"
                                @wheel="$event.target.blur()"
-                               @input="setQuizScore(selectedQuizId, student.id, $event.target.value); refreshChart();"
+                               @change="setQuizScore(selectedQuizId, student.id, $event.target.value)"
                                placeholder="得分" 
                                class="w-20 px-2 py-1 border rounded-lg text-sm dark:bg-slate-700 dark:border-slate-600 font-bold">
                         <span class="text-xs text-slate-400 font-mono w-10 text-right" x-text="getQuizScorePct(selectedQuizId, student.id)"></span>
@@ -422,7 +442,7 @@
                         <input type="number" 
                                :value="getQuizScore(selectedQuizId, student.id)"
                                @wheel="$event.target.blur()"
-                               @input="setQuizScore(selectedQuizId, student.id, $event.target.value); refreshChart();"
+                               @change="setQuizScore(selectedQuizId, student.id, $event.target.value)"
                                placeholder="得分" 
                                class="w-20 px-2 py-1 border rounded-lg text-sm dark:bg-slate-700 dark:border-slate-600 font-bold">
                         <span class="text-xs text-slate-400 font-mono w-10 text-right" x-text="getQuizScorePct(selectedQuizId, student.id)"></span>
@@ -615,7 +635,7 @@
     </main>
   </div>
 
-  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 (需求 1：圖表修復) -->
+  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 (修改點 3：改良與上次測驗比對顯示) -->
   <div x-show="showStudentProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <template x-if="profileStudent">
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
@@ -630,7 +650,7 @@
           <button @click="showStudentProfileModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
         </div>
 
-        <!-- 個人統計 4 大卡片 -->
+        <!-- 個人統計 4 大卡片 (改良為「較上次測驗」變動) -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
             <p class="text-indigo-500 font-bold">個人平均分</p>
@@ -645,10 +665,11 @@
             <p class="text-base font-black text-amber-700 dark:text-amber-300 mt-0.5" x-text="`${getStudentQuizStats(profileStudent.id).min}%`"></p>
           </div>
           <div class="p-2.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40 rounded-xl">
-            <p class="text-purple-500 font-bold">進步幅度</p>
+            <p class="text-purple-500 font-bold">與上次比較</p>
             <p class="text-base font-black mt-0.5" 
-               :class="getStudentQuizStats(profileStudent.id).progress >= 0 ? 'text-emerald-600' : 'text-red-600'"
-               x-text="`${getStudentQuizStats(profileStudent.id).progress >= 0 ? '+' : ''}${getStudentQuizStats(profileStudent.id).progress}%`"></p>
+               :class="getStudentQuizStats(profileStudent.id).lastVsPrev.startsWith('+') ? 'text-emerald-600' : (getStudentQuizStats(profileStudent.id).lastVsPrev.startsWith('-') ? 'text-red-600' : 'text-slate-500')"
+               x-text="getStudentQuizStats(profileStudent.id).lastVsPrev"></p>
+            <p class="text-[9px] text-slate-400" x-text="getStudentQuizStats(profileStudent.id).statusText"></p>
           </div>
         </div>
 
@@ -785,7 +806,7 @@
         </div>
       </div>
       <div class="flex justify-end pt-2">
-        <button @click="saveDataToFirebase(); showQuizConfigModal = false; refreshChart();" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存設定</button>
+        <button @click="saveDataToFirebase(); showQuizConfigModal = false; showQuizChart = false;" class="px-5 py-2 text-xs bg-indigo-600 text-white font-bold rounded-xl shadow">儲存設定</button>
       </div>
     </div>
   </div>
@@ -869,7 +890,7 @@ const firebaseConfig = {
       return {
         user: null,
         isDarkMode: false,
-        currentTab: 'calendar', // 需求 2：預設開啟第一頁「行事曆待辦」
+        currentTab: 'calendar',
         currentTheme: 'indigo',
 
         currentSemesterName: '2025-2026 第一學期',
@@ -877,6 +898,7 @@ const firebaseConfig = {
         viewingArchiveId: null,
 
         todos: [],
+        todoSortMode: 'date', // 修改點 2：預設按截止日期排序 ('date' 或 'created')
         quickTodoText: '',
         quickTodoDate: new Date().toISOString().split('T')[0],
 
@@ -899,6 +921,7 @@ const firebaseConfig = {
         showSeatingRuleModal: false,
         showGridConfigModal: false,
 
+        showQuizChart: false, // 修改點 1：控制全班測驗圖表顯示狀態
         profileStudent: null,
         chartInstance: null,
         studentChartInstance: null,
@@ -946,11 +969,6 @@ const firebaseConfig = {
 
         switchTab(tab) {
           this.currentTab = tab;
-          if (tab === 'quiz') {
-            this.$nextTick(() => {
-              setTimeout(() => this.refreshChart(), 150);
-            });
-          }
         },
 
         loginGoogle() {
@@ -1019,7 +1037,7 @@ const firebaseConfig = {
           }
         },
 
-        // --- 行事曆與待辦事項邏輯 ---
+        // --- 行事曆與待辦事項排序 (修改點 2) ---
         addQuickTodo() {
           if (!this.quickTodoText.trim()) return;
           this.todos.push({
@@ -1030,6 +1048,13 @@ const firebaseConfig = {
           });
           this.quickTodoText = '';
           this.saveDataToFirebase();
+        },
+
+        getSortedTodos() {
+          if (this.todoSortMode === 'date') {
+            return [...this.todos].sort((a, b) => new Date(a.date) - new Date(b.date));
+          }
+          return this.todos;
         },
 
         toggleTodo(id) {
@@ -1114,7 +1139,7 @@ const firebaseConfig = {
             this.viewingArchiveId = arch.id;
             this.autoSelectFirstHomework();
             this.autoSelectFirstQuiz();
-            this.refreshChart();
+            this.showQuizChart = false;
           }
         },
 
@@ -1131,14 +1156,14 @@ const firebaseConfig = {
           }
         },
 
-        // --- 個人成績趨勢圖與統計 (需求 1：完美渲染個人折線圖) ---
+        // --- 個人成績與改良後與上次測驗比對邏輯 (修改點 3) ---
         openStudentProfile(studentId) {
           const s = this.students.find(st => st.id === studentId);
           if (s) {
             this.profileStudent = s;
             this.showStudentProfileModal = true;
             this.$nextTick(() => {
-              setTimeout(() => this.renderStudentTrendChart(studentId), 180);
+              setTimeout(() => this.renderStudentTrendChart(studentId), 150);
             });
           }
         },
@@ -1148,21 +1173,34 @@ const firebaseConfig = {
           const pcts = [];
           quizList.forEach(q => {
             const score = this.getQuizScore(q.id, studentId);
-            if (score !== '' && score !== undefined) {
-              pcts.push(Math.round((Number(score) / q.maxScore) * 100));
+            if (score !== '' && score !== undefined && score !== null) {
+              pcts.push({
+                title: q.title,
+                pct: Math.round((Number(score) / q.maxScore) * 100)
+              });
             }
           });
 
-          if (pcts.length === 0) return { avg: 0, max: 0, min: 0, progress: 0, count: 0 };
+          if (pcts.length === 0) {
+            return { avg: 0, max: 0, min: 0, lastVsPrev: '-', statusText: '無測驗數據', count: 0 };
+          }
 
-          const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
-          const max = Math.max(...pcts);
-          const min = Math.min(...pcts);
-          const first = pcts[0];
-          const last = pcts[pcts.length - 1];
-          const progress = pcts.length > 1 ? (last - first) : 0;
+          const scoresOnly = pcts.map(p => p.pct);
+          const avg = Math.round(scoresOnly.reduce((a, b) => a + b, 0) / scoresOnly.length);
+          const max = Math.max(...scoresOnly);
+          const min = Math.min(...scoresOnly);
+          
+          let lastVsPrev = '-';
+          let statusText = '僅1次測驗';
+          if (pcts.length >= 2) {
+            const latest = pcts[pcts.length - 1].pct;
+            const prev = pcts[pcts.length - 2].pct;
+            const diff = latest - prev;
+            lastVsPrev = (diff >= 0 ? '+' : '') + diff + '%';
+            statusText = diff >= 0 ? '較上次進步' : '較上次退步';
+          }
 
-          return { avg, max, min, progress, count: pcts.length };
+          return { avg, max, min, lastVsPrev, statusText, count: pcts.length };
         },
 
         renderStudentTrendChart(studentId) {
@@ -1175,7 +1213,7 @@ const firebaseConfig = {
 
           quizList.forEach(q => {
             const score = this.getQuizScore(q.id, studentId);
-            if (score !== '' && score !== undefined) {
+            if (score !== '' && score !== undefined && score !== null) {
               labels.push(q.title);
               scores.push(Math.round((Number(score) / q.maxScore) * 100));
             }
@@ -1214,21 +1252,24 @@ const firebaseConfig = {
           });
         },
 
-        // --- 需求 1：全班測驗分佈圖徹底穩定修復 ---
-        refreshChart() {
+        // --- 手動生成全班測驗分佈圖 (修改點 1) ---
+        generateQuizChart() {
           const q = this.getSelectedQuiz();
           if (!q) return;
+          this.showQuizChart = true;
 
           this.$nextTick(() => {
             setTimeout(() => {
               const canvas = document.getElementById('quizChartCanvas');
               if (!canvas) return;
 
-              const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
-              const counts = [0, 0, 0, 0, 0];
+              const scores = this.currentStudents
+                .map(s => this.getQuizScore(q.id, s.id))
+                .filter(v => v !== '' && v !== undefined && v !== null);
 
+              const counts = [0, 0, 0, 0, 0];
               scores.forEach(s => {
-                const pct = (s / q.maxScore) * 100;
+                const pct = (Number(s) / q.maxScore) * 100;
                 if (pct >= 90) counts[4]++;
                 else if (pct >= 80) counts[3]++;
                 else if (pct >= 70) counts[2]++;
@@ -1256,12 +1297,11 @@ const firebaseConfig = {
                 options: {
                   responsive: true,
                   maintainAspectRatio: false,
-                  animation: { duration: 300 },
                   plugins: { legend: { display: false } },
                   scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
                 }
               });
-            }, 150);
+            }, 100);
           });
         },
 
@@ -1641,8 +1681,8 @@ const firebaseConfig = {
             const newQ = { id: 'q_' + Date.now(), class: this.currentClass, title, maxScore: 100 };
             this.quizzes.push(newQ);
             this.selectedQuizId = newQ.id;
+            this.showQuizChart = false;
             this.saveDataToFirebase();
-            this.$nextTick(() => setTimeout(() => this.refreshChart(), 150));
           }
         },
 
@@ -1660,8 +1700,8 @@ const firebaseConfig = {
           const q = this.getSelectedQuiz();
           if (!q) return;
           q.maxScore = Number(val) || 100;
+          this.showQuizChart = false;
           this.saveDataToFirebase();
-          this.refreshChart();
         },
 
         deleteCurrentQuiz() {
@@ -1670,8 +1710,8 @@ const firebaseConfig = {
           if (confirm(`確定要刪除測驗「${q.title}」嗎？`)) {
             this.quizzes = this.quizzes.filter(item => item.id !== q.id);
             this.autoSelectFirstQuiz();
+            this.showQuizChart = false;
             this.saveDataToFirebase();
-            this.refreshChart();
           }
         },
 
