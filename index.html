@@ -36,17 +36,18 @@
 
   <!-- 主介面區塊 -->
   <div x-show="user">
-    <!-- 頂部導覽列 -->
+    <!-- 頂部導覽列 (含點擊修改學期名稱) -->
     <header :class="getThemeHeaderClass()" class="text-white shadow-md transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
           <span class="text-2xl">📚</span>
           <div>
             <h1 class="text-xl font-bold tracking-wide">課堂管理系統</h1>
-           <p @click="editSemesterName()" class="text-[10px] opacity-80 cursor-pointer hover:underline hover:opacity-100 flex items-center gap-1 transition" title="點擊即可修改學期名稱">
-  <span x-text="`目前學期：${currentSemesterName}`"></span>
-  <span class="text-[9px]">✏️</span>
-</p>
+            <!-- 點擊學期名稱即可修改 -->
+            <p @click="editSemesterName()" class="text-[10px] opacity-80 cursor-pointer hover:underline hover:opacity-100 flex items-center gap-1 transition" title="點擊即可修改學期名稱">
+              <span x-text="`目前學期：${currentSemesterName}`"></span>
+              <span class="text-[9px]">✏️</span>
+            </p>
           </div>
         </div>
 
@@ -112,7 +113,7 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 主頁：行事曆與待辦事項 (修改點 2：新增日期/新增順序排序功能) ==================== -->
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 ==================== -->
       <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 dark:border-slate-700">
           <div>
@@ -337,7 +338,7 @@
         </div>
       </div>
 
-      <!-- ==================== 4. 測驗成績分析 (修改點 1：改為手動按鈕生成圖表) ==================== -->
+      <!-- ==================== 4. 測驗成績分析 ==================== -->
       <div x-show="currentTab === 'quiz'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -386,7 +387,7 @@
                 </div>
               </div>
 
-              <!-- 修改點 1：手動按下按鈕才繪製並顯示圖表 -->
+              <!-- 手動繪製圖表 -->
               <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 space-y-3">
                 <div class="flex justify-between items-center">
                   <p class="text-xs font-bold text-slate-500">📊 全班成績等級區段分佈圖：</p>
@@ -409,7 +410,7 @@
               </div>
             </div>
 
-            <!-- 分數登記區 (改為 change 觸發，不干擾輸入) -->
+            <!-- 分數登記區 -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
               <h3 class="font-bold text-md mb-3" x-text="`💯 ${getSelectedQuiz().title} 分數登記`"></h3>
               
@@ -638,7 +639,7 @@
     </main>
   </div>
 
-  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 (修改點 3：改良與上次測驗比對顯示) -->
+  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 -->
   <div x-show="showStudentProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <template x-if="profileStudent">
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
@@ -653,7 +654,7 @@
           <button @click="showStudentProfileModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
         </div>
 
-        <!-- 個人統計 4 大卡片 (改良為「較上次測驗」變動) -->
+        <!-- 個人統計 4 大卡片 -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
             <p class="text-indigo-500 font-bold">個人平均分</p>
@@ -896,12 +897,12 @@ const firebaseConfig = {
         currentTab: 'calendar',
         currentTheme: 'indigo',
 
-        currentSemesterName: '2025-2026 第一學期',
+        currentSemesterName: '2026-2027 第一學期',
         archives: [],
         viewingArchiveId: null,
 
         todos: [],
-        todoSortMode: 'date', // 修改點 2：預設按截止日期排序 ('date' 或 'created')
+        todoSortMode: 'date',
         quickTodoText: '',
         quickTodoDate: new Date().toISOString().split('T')[0],
 
@@ -924,7 +925,7 @@ const firebaseConfig = {
         showSeatingRuleModal: false,
         showGridConfigModal: false,
 
-        showQuizChart: false, // 修改點 1：控制全班測驗圖表顯示狀態
+        showQuizChart: false,
         profileStudent: null,
         chartInstance: null,
         studentChartInstance: null,
@@ -1040,7 +1041,16 @@ const firebaseConfig = {
           }
         },
 
-        // --- 行事曆與待辦事項排序 (修改點 2) ---
+        // --- 點擊直接修改學期名稱方法 ---
+        editSemesterName() {
+          const newName = prompt('請輸入新的學期名稱：', this.currentSemesterName);
+          if (newName && newName.trim()) {
+            this.currentSemesterName = newName.trim();
+            this.saveDataToFirebase();
+          }
+        },
+
+        // --- 行事曆與待辦事項排序 ---
         addQuickTodo() {
           if (!this.quickTodoText.trim()) return;
           this.todos.push({
@@ -1092,16 +1102,7 @@ const firebaseConfig = {
           if (todo.date === today) return { text: '⏰ 今天截止', class: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 font-bold' };
           return { text: '📌 進行中', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold' };
         },
-editSemesterName() {
-      const newName = prompt('請輸入新的學期名稱：', this.currentSemesterName);
-      if (newName && newName.trim()) {
-        this.currentSemesterName = newName.trim();
-        this.saveDataToFirebase();
-      }
-    },
 
-    // --- 歷史學期歸檔邏輯 ---
-    archiveCurrentSemesterPrompt() {
         // --- 歷史學期歸檔邏輯 ---
         archiveCurrentSemesterPrompt() {
           const name = prompt('請輸入要歸檔封存的學期名稱：', this.currentSemesterName);
@@ -1128,7 +1129,7 @@ editSemesterName() {
             this.records = {};
             this.quizScores = {};
             this.incidents = [];
-            const nextSem = prompt('請輸入新學期的名稱：', '2025-2026 第二學期');
+            const nextSem = prompt('請輸入新學期的名稱：', '2026-2027 第二學期');
             if (nextSem) this.currentSemesterName = nextSem;
           }
 
@@ -1168,7 +1169,7 @@ editSemesterName() {
           }
         },
 
-        // --- 個人成績與改良後與上次測驗比對邏輯 (修改點 3) ---
+        // --- 個人成績與與上次測驗比對邏輯 ---
         openStudentProfile(studentId) {
           const s = this.students.find(st => st.id === studentId);
           if (s) {
@@ -1264,7 +1265,7 @@ editSemesterName() {
           });
         },
 
-        // --- 手動生成全班測驗分佈圖 (修改點 1) ---
+        // --- 手動生成全班測驗分佈圖 ---
         generateQuizChart() {
           const q = this.getSelectedQuiz();
           if (!q) return;
