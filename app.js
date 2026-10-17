@@ -1,6 +1,6 @@
 // Firebase 初始化設定
 const firebaseConfig = {
-  apiKey: "AIzaSyA5YYncT7-6_003kZh1Iq0zoreOVk2og50",
+  apiKey: "AIzaSyA5YYncT7-6_0O3kZh1Iq0zoreOVk2og50",
   authDomain: "homework-tracker-971ef.firebaseapp.com",
   projectId: "homework-tracker-971ef",
   storageBucket: "homework-tracker-971ef.firebasestorage.app",
