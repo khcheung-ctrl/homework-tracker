@@ -36,7 +36,7 @@
 
   <!-- 主介面區塊 -->
   <div x-show="user">
-    <!-- 頂部導覽列 (支援動態主題色彩) -->
+    <!-- 頂部導覽列 (整合精簡主題選擇) -->
     <header :class="getThemeHeaderClass()" class="text-white shadow-md transition-colors duration-300">
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
@@ -47,11 +47,11 @@
           </div>
         </div>
 
-        <!-- 頁籤選單與導出備份 -->
+        <!-- 頁籤選單 (需求 2：行事曆移至第 1 頁，功課移至第 2 頁) -->
         <div class="flex flex-wrap items-center gap-2">
           <nav class="flex bg-black/20 p-1 rounded-lg text-sm font-medium">
-            <button @click="switchTab('homework')" :class="currentTab === 'homework' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📋 按功課管理</button>
             <button @click="switchTab('calendar')" :class="currentTab === 'calendar' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📅 行事曆待辦</button>
+            <button @click="switchTab('homework')" :class="currentTab === 'homework' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📋 按功課管理</button>
             <button @click="switchTab('overview')" :class="currentTab === 'overview' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📊 學生整體總覽</button>
             <button @click="switchTab('quiz')" :class="currentTab === 'quiz' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">📈 測驗成績分析</button>
             <button @click="switchTab('seating')" :class="currentTab === 'seating' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">🪑 課室座位表</button>
@@ -59,9 +59,20 @@
             <button @click="switchTab('settings')" :class="currentTab === 'settings' ? 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 shadow' : 'text-white hover:text-white/80'" class="px-3 py-1.5 rounded-md transition">⚙️ 設定與歸檔</button>
           </nav>
 
-          <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 導出 Excel</button>
-          <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 匯出 JSON</button>
+          <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 Excel</button>
+          <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 備份</button>
           
+          <!-- 需求 3：精簡主題色彩選單 (位於黑白模式旁邊，不佔空間) -->
+          <div class="flex items-center space-x-1 bg-black/20 p-1 rounded-lg">
+            <template x-for="t in themeOptions" :key="t.key">
+              <button @click="setThemeColor(t.key)" 
+                      :title="t.name"
+                      :class="currentTheme === t.key ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'"
+                      class="w-5 h-5 rounded-full transition transform border border-white/30"
+                      :style="`background-color: ${t.color};`"></button>
+            </template>
+          </div>
+
           <button @click="toggleDarkMode()" class="bg-black/30 p-2 rounded-lg text-sm hover:bg-black/40 transition">
             <span x-text="isDarkMode ? '☀️ Day' : '🌙 Dark'"></span>
           </button>
@@ -98,44 +109,43 @@
         </div>
       </div>
 
-      <!-- 主頁待辦事項提醒快捷卡片 (需求 3：放在主頁提醒) -->
-      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-        <div class="flex justify-between items-center">
-          <h3 class="text-sm font-bold flex items-center space-x-2">
-            <span>📅 主頁行事曆與待辦提醒</span>
-            <span class="text-xs font-normal text-slate-400" x-text="` Today: ${new Date().toISOString().split('T')[0]}`"></span>
-          </h3>
-          <button @click="switchTab('calendar')" class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline">+ 管理完整行事曆</button>
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 (需求 2：放在第 1 頁主頁) ==================== -->
+      <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
+        <div class="flex justify-between items-center border-b pb-3 dark:border-slate-700">
+          <div>
+            <h2 class="text-lg font-bold">📅 主頁教學行事曆與待辦事項</h2>
+            <p class="text-xs text-slate-400">在此管理教學任務與作業/測驗截止日，逾期項目將自動發出紅色警示。</p>
+          </div>
+          <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-lg" x-text="`Today: ${new Date().toISOString().split('T')[0]}`"></span>
         </div>
 
-        <!-- 快速新增待辦 -->
-        <div class="flex flex-wrap sm:flex-nowrap gap-2">
-          <input type="text" x-model="quickTodoText" placeholder="輸入待辦事項 (如: 批改單元一工作紙)..." class="flex-1 px-3 py-1.5 border rounded-xl text-xs dark:bg-slate-700 border-slate-300 dark:border-slate-600">
-          <input type="date" x-model="quickTodoDate" class="px-3 py-1.5 border rounded-xl text-xs dark:bg-slate-700 border-slate-300 dark:border-slate-600">
-          <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-1.5 rounded-xl shadow">新增待辦</button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="text" x-model="quickTodoText" placeholder="輸入待辦事項內容 (例: 批改 3A 單元一測驗)" class="px-4 py-2 border rounded-xl text-sm dark:bg-slate-700 border-slate-300 dark:border-slate-600">
+          <input type="date" x-model="quickTodoDate" class="px-4 py-2 border rounded-xl text-sm dark:bg-slate-700 border-slate-300 dark:border-slate-600">
+          <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow transition">+ 新增待辦事項</button>
         </div>
 
-        <!-- 待辦清單 (快捷顯示近期的 3 條) -->
-        <div class="space-y-1.5">
-          <template x-for="todo in getTopTodos()" :key="todo.id">
-            <div class="flex items-center justify-between p-2 rounded-xl border transition text-xs" :class="getTaskStatusClass(todo)">
-              <div class="flex items-center space-x-2">
-                <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="rounded text-indigo-600 cursor-pointer">
+        <div class="space-y-2 pt-2">
+          <template x-for="todo in todos" :key="todo.id">
+            <div class="flex items-center justify-between p-3.5 rounded-xl border transition text-sm" :class="getTaskStatusClass(todo)">
+              <div class="flex items-center space-x-3">
+                <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer">
                 <span class="font-bold" x-text="todo.text"></span>
               </div>
-              <div class="flex items-center space-x-2 font-mono">
-                <span class="text-[10px]" x-text="`截止: ${todo.date}`"></span>
-                <span class="px-2 py-0.5 rounded-md text-[10px]" :class="getTaskBadge(todo).class" x-text="getTaskBadge(todo).text"></span>
+              <div class="flex items-center space-x-3 font-mono">
+                <span class="text-xs text-slate-500" x-text="`截止日期: ${todo.date}`"></span>
+                <span class="px-2.5 py-1 rounded-lg text-xs" :class="getTaskBadge(todo).class" x-text="getTaskBadge(todo).text"></span>
+                <button @click="deleteTodo(todo.id)" class="text-red-500 hover:underline text-xs font-bold">刪除</button>
               </div>
             </div>
           </template>
           <template x-if="todos.length === 0">
-            <p class="text-xs text-slate-400 text-center py-1">目前沒有待辦事項，太棒了！🎉</p>
+            <div class="text-center py-8 text-slate-400 text-sm">目前尚無任何待辦事項，太棒了！🎉</div>
           </template>
         </div>
       </div>
 
-      <!-- ==================== 1. 按功課管理頁面 ==================== -->
+      <!-- ==================== 2. 按功課管理頁面 (需求 2：順延至第 2 頁) ==================== -->
       <div x-show="currentTab === 'homework'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -205,9 +215,7 @@
                 </div>
               </div>
 
-              <!-- 雙欄縱向直排列表 -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- 左欄學生 -->
                 <div class="space-y-2">
                   <template x-for="student in getLeftColumnStudents()" :key="student.id">
                     <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
@@ -237,7 +245,6 @@
                   </template>
                 </div>
 
-                <!-- 右欄學生 -->
                 <div class="space-y-2">
                   <template x-for="student in getRightColumnStudents()" :key="student.id">
                     <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
@@ -270,34 +277,6 @@
             </div>
           </div>
         </template>
-      </div>
-
-      <!-- ==================== 2. 行事曆與待辦事項完整頁面 (需求 3) ==================== -->
-      <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
-        <h2 class="text-lg font-bold">📅 完整教學行事曆與待辦事項</h2>
-        <p class="text-xs text-slate-400">在此管理教學任務、測驗出題、作業批改截止日等。已逾期項目將會特別以紅色提醒。</p>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <input type="text" x-model="quickTodoText" placeholder="待辦事項內容" class="px-4 py-2 border rounded-xl text-sm dark:bg-slate-700 border-slate-300 dark:border-slate-600">
-          <input type="date" x-model="quickTodoDate" class="px-4 py-2 border rounded-xl text-sm dark:bg-slate-700 border-slate-300 dark:border-slate-600">
-          <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow transition">+ 新增至行事曆</button>
-        </div>
-
-        <div class="space-y-2 pt-2">
-          <template x-for="todo in todos" :key="todo.id">
-            <div class="flex items-center justify-between p-3 rounded-xl border transition text-sm" :class="getTaskStatusClass(todo)">
-              <div class="flex items-center space-x-3">
-                <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer">
-                <span class="font-bold" x-text="todo.text"></span>
-              </div>
-              <div class="flex items-center space-x-3 font-mono">
-                <span class="text-xs text-slate-500" x-text="`截止日期: ${todo.date}`"></span>
-                <span class="px-2.5 py-1 rounded-lg text-xs" :class="getTaskBadge(todo).class" x-text="getTaskBadge(todo).text"></span>
-                <button @click="deleteTodo(todo.id)" class="text-red-500 hover:underline text-xs font-bold">刪除</button>
-              </div>
-            </div>
-          </template>
-        </div>
       </div>
 
       <!-- ==================== 3. 學生整體總覽 ==================== -->
@@ -349,7 +328,7 @@
         </div>
       </div>
 
-      <!-- ==================== 4. 測驗成績分析 ==================== -->
+      <!-- ==================== 4. 測驗成績分析 (需求 1：徹底修復圖表消失 Bug) ==================== -->
       <div x-show="currentTab === 'quiz'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -398,10 +377,11 @@
                 </div>
               </div>
 
+              <!-- 需求 1：圖表容器加強修復，保證 100% 渲染 -->
               <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <p class="text-xs font-bold text-slate-500 mb-3">📊 全班成績等級區段分佈圖：</p>
-                <div class="h-56 w-full relative">
-                  <canvas id="quizChartCanvas"></canvas>
+                <div class="w-full relative min-h-[220px]">
+                  <canvas id="quizChartCanvas" style="display: block; width: 100%; height: 220px;"></canvas>
                 </div>
               </div>
             </div>
@@ -548,10 +528,10 @@
         </table>
       </div>
 
-      <!-- ==================== 7. 設定與歷史學期歸檔 (需求 2) ==================== -->
+      <!-- ==================== 7. 設定與歷史學期歸檔 ==================== -->
       <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        <!-- 歷史學期歸檔管理 (需求 2) -->
+        <!-- 歷史學期歸檔管理 -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
           <div class="flex justify-between items-center border-b pb-3 dark:border-slate-700">
             <div>
@@ -580,22 +560,6 @@
                 <p class="text-xs text-slate-400 col-span-full py-2">目前尚無歸檔封存學期。</p>
               </template>
             </div>
-          </div>
-        </div>
-
-        <!-- 主題色彩選擇 -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
-          <h2 class="text-lg font-bold">🎨 系統主題色彩切換</h2>
-          <p class="text-xs text-slate-400">選擇您喜歡的主題風格：</p>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
-            <template x-for="t in themeOptions" :key="t.key">
-              <button @click="setThemeColor(t.key)" 
-                      :class="currentTheme === t.key ? 'ring-4 ring-offset-2 ring-indigo-500 scale-105' : ''"
-                      class="p-3 rounded-2xl text-white font-bold text-xs flex flex-col items-center space-y-1 shadow transition transform"
-                      :style="`background-color: ${t.color};`">
-                <span x-text="t.name"></span>
-              </button>
-            </template>
           </div>
         </div>
 
@@ -651,7 +615,7 @@
     </main>
   </div>
 
-  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 (需求 1) -->
+  <!-- 彈窗 1：個人學生綜合檔案卡與成績趨勢圖 (需求 1：圖表修復) -->
   <div x-show="showStudentProfileModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <template x-if="profileStudent">
       <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-xl shadow-2xl space-y-4 max-h-[88vh] overflow-y-auto">
@@ -666,7 +630,7 @@
           <button @click="showStudentProfileModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
         </div>
 
-        <!-- 個人統計 4 大卡片 (新增平均、最高、最低、進步幅度) (需求 1) -->
+        <!-- 個人統計 4 大卡片 -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
           <div class="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
             <p class="text-indigo-500 font-bold">個人平均分</p>
@@ -688,11 +652,11 @@
           </div>
         </div>
 
-        <!-- 個人測驗分數折線趨勢圖 (需求 1) -->
+        <!-- 個人測驗分數折線趨勢圖 -->
         <div class="space-y-2 border-t pt-3 dark:border-slate-700">
           <p class="text-xs font-bold text-slate-500">📈 個人歷次測驗分數趨勢折線圖：</p>
-          <div class="h-44 w-full relative bg-slate-50 dark:bg-slate-900/50 rounded-xl p-2">
-            <canvas id="studentTrendChartCanvas"></canvas>
+          <div class="w-full relative min-h-[180px] bg-slate-50 dark:bg-slate-900/50 rounded-xl p-2">
+            <canvas id="studentTrendChartCanvas" style="display: block; width: 100%; height: 180px;"></canvas>
           </div>
         </div>
 
@@ -885,7 +849,7 @@
     </div>
   </div>
 
-  <!-- JavaScript 邏輯 -->
+  <!-- JavaScript 邏輯腳本 -->
   <script>
 const firebaseConfig = {
   apiKey: "AIzaSyA5YYncT7-6_0O3kZh1Iq0zoreOVk2og50",
@@ -905,7 +869,7 @@ const firebaseConfig = {
       return {
         user: null,
         isDarkMode: false,
-        currentTab: 'homework',
+        currentTab: 'calendar', // 需求 2：預設開啟第一頁「行事曆待辦」
         currentTheme: 'indigo',
 
         currentSemesterName: '2025-2026 第一學期',
@@ -984,7 +948,7 @@ const firebaseConfig = {
           this.currentTab = tab;
           if (tab === 'quiz') {
             this.$nextTick(() => {
-              setTimeout(() => this.refreshChart(), 120);
+              setTimeout(() => this.refreshChart(), 150);
             });
           }
         },
@@ -1030,7 +994,7 @@ const firebaseConfig = {
         },
 
         async saveDataToFirebase() {
-          if (!this.user || this.viewingArchiveId) return; // 歷史檢視模式下不覆蓋資料
+          if (!this.user || this.viewingArchiveId) return;
           try {
             await db.collection('homework_trackers').doc(this.user.uid).set({
               classes: this.classes,
@@ -1055,7 +1019,7 @@ const firebaseConfig = {
           }
         },
 
-        // --- 行事曆與待辦事項邏輯 (需求 3) ---
+        // --- 行事曆與待辦事項邏輯 ---
         addQuickTodo() {
           if (!this.quickTodoText.trim()) return;
           this.todos.push({
@@ -1081,10 +1045,6 @@ const firebaseConfig = {
           this.saveDataToFirebase();
         },
 
-        getTopTodos() {
-          return [...this.todos].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
-        },
-
         getTaskStatusClass(todo) {
           if (todo.completed) return 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-slate-400 line-through';
           const today = new Date().toISOString().split('T')[0];
@@ -1105,7 +1065,7 @@ const firebaseConfig = {
           return { text: '📌 進行中', class: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold' };
         },
 
-        // --- 歷史學期歸檔邏輯 (需求 2) ---
+        // --- 歷史學期歸檔邏輯 ---
         archiveCurrentSemesterPrompt() {
           const name = prompt('請輸入要歸檔封存的學期名稱：', this.currentSemesterName);
           if (!name) return;
@@ -1171,14 +1131,14 @@ const firebaseConfig = {
           }
         },
 
-        // --- 個人成績趨勢圖與統計 (需求 1) ---
+        // --- 個人成績趨勢圖與統計 (需求 1：完美渲染個人折線圖) ---
         openStudentProfile(studentId) {
           const s = this.students.find(st => st.id === studentId);
           if (s) {
             this.profileStudent = s;
             this.showStudentProfileModal = true;
             this.$nextTick(() => {
-              setTimeout(() => this.renderStudentTrendChart(studentId), 120);
+              setTimeout(() => this.renderStudentTrendChart(studentId), 180);
             });
           }
         },
@@ -1230,7 +1190,7 @@ const firebaseConfig = {
           this.studentChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
-              labels: labels.length > 0 ? labels : ['尚未有測驗成績'],
+              labels: labels.length > 0 ? labels : ['無測驗紀錄'],
               datasets: [{
                 label: '得分率 (%)',
                 data: scores.length > 0 ? scores : [0],
@@ -1251,6 +1211,57 @@ const firebaseConfig = {
                 y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
               }
             }
+          });
+        },
+
+        // --- 需求 1：全班測驗分佈圖徹底穩定修復 ---
+        refreshChart() {
+          const q = this.getSelectedQuiz();
+          if (!q) return;
+
+          this.$nextTick(() => {
+            setTimeout(() => {
+              const canvas = document.getElementById('quizChartCanvas');
+              if (!canvas) return;
+
+              const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
+              const counts = [0, 0, 0, 0, 0];
+
+              scores.forEach(s => {
+                const pct = (s / q.maxScore) * 100;
+                if (pct >= 90) counts[4]++;
+                else if (pct >= 80) counts[3]++;
+                else if (pct >= 70) counts[2]++;
+                else if (pct >= 60) counts[1]++;
+                else counts[0]++;
+              });
+
+              if (this.chartInstance) {
+                this.chartInstance.destroy();
+                this.chartInstance = null;
+              }
+
+              const ctx = canvas.getContext('2d');
+              this.chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
+                  datasets: [{
+                    label: '人數',
+                    data: counts,
+                    backgroundColor: ['#ef4444', '#f59e0b', '#6366f1', '#3b82f6', '#10b981'],
+                    borderRadius: 8
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  animation: { duration: 300 },
+                  plugins: { legend: { display: false } },
+                  scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+              });
+            }, 150);
           });
         },
 
@@ -1410,53 +1421,6 @@ const firebaseConfig = {
 
         printSeatingChart() {
           window.print();
-        },
-
-        refreshChart() {
-          const q = this.getSelectedQuiz();
-          if (!q) return;
-
-          this.$nextTick(() => {
-            const canvas = document.getElementById('quizChartCanvas');
-            if (!canvas) return;
-
-            const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
-            const counts = [0, 0, 0, 0, 0];
-
-            scores.forEach(s => {
-              const pct = (s / q.maxScore) * 100;
-              if (pct >= 90) counts[4]++;
-              else if (pct >= 80) counts[3]++;
-              else if (pct >= 70) counts[2]++;
-              else if (pct >= 60) counts[1]++;
-              else counts[0]++;
-            });
-
-            if (this.chartInstance) {
-              this.chartInstance.destroy();
-              this.chartInstance = null;
-            }
-
-            const ctx = canvas.getContext('2d');
-            this.chartInstance = new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
-                datasets: [{
-                  label: '人數',
-                  data: counts,
-                  backgroundColor: ['#ef4444', '#f59e0b', '#6366f1', '#3b82f6', '#10b981'],
-                  borderRadius: 8
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-              }
-            });
-          });
         },
 
         getLeftColumnStudents() {
@@ -1678,7 +1642,7 @@ const firebaseConfig = {
             this.quizzes.push(newQ);
             this.selectedQuizId = newQ.id;
             this.saveDataToFirebase();
-            this.$nextTick(() => setTimeout(() => this.refreshChart(), 100));
+            this.$nextTick(() => setTimeout(() => this.refreshChart(), 150));
           }
         },
 
