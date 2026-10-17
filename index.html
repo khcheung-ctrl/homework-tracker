@@ -76,14 +76,14 @@
           <button @click="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">📊 Excel</button>
           <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 備份</button>
           
-          <!-- 改為主題顏色下拉選單 -->
+          <!-- 主題顏色下拉選單 -->
           <select x-model="currentTheme" @change="setThemeColor($event.target.value)" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg border border-white/20 font-medium cursor-pointer focus:outline-none">
             <template x-for="t in themeOptions" :key="t.key">
               <option :value="t.key" x-text="`🎨 ${t.name}`" class="text-slate-800 bg-white dark:bg-slate-800 dark:text-slate-100"></option>
             </template>
           </select>
 
-          <!-- 切換模式按鈕：固定寬度 w-20 避免長度變化導致換行跳動 -->
+          <!-- 切換模式按鈕 -->
           <button @click="toggleDarkMode()" class="w-20 bg-black/30 hover:bg-black/40 text-white text-xs py-1.5 rounded-lg font-medium border border-white/20 transition text-center">
             <span x-text="isDarkMode ? '☀️ Day' : '🌙 Dark'"></span>
           </button>
@@ -121,7 +121,7 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 主頁：行事曆與待辦事項 (雙欄卡片版) ==================== -->
+      <!-- ==================== 1. 主頁：行事曆與待辦事項 ==================== -->
       <div x-show="currentTab === 'calendar'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-5">
         <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3 dark:border-slate-700">
           <div>
@@ -142,17 +142,14 @@
           <button @click="addQuickTodo()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2 rounded-xl shadow transition">+ 新增待辦事項</button>
         </div>
 
-        <!-- 雙欄網格 (grid-cols-1 md:grid-cols-2) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
           <template x-for="todo in getSortedTodos()" :key="todo.id">
             <div class="p-4 rounded-xl border transition text-sm flex flex-col justify-between space-y-3 shadow-sm" :class="getTaskStatusClass(todo)">
-              <!-- 卡片第一行：勾選框與內容 -->
               <div class="flex items-start space-x-3">
                 <input type="checkbox" :checked="todo.completed" @change="toggleTodo(todo.id)" class="w-4 h-4 rounded text-indigo-600 cursor-pointer mt-0.5">
                 <span class="font-bold text-slate-800 dark:text-slate-100 leading-snug break-words flex-1" x-text="todo.text"></span>
               </div>
               
-              <!-- 卡片第二行：截止日期選擇、狀態標籤與刪除 -->
               <div class="flex items-center justify-between pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 text-xs font-mono">
                 <div class="flex items-center space-x-1">
                   <span class="text-[11px] text-slate-500 font-sans">截止:</span>
@@ -555,7 +552,8 @@
               <button @click="showSeatingRuleModal = true" class="text-xs bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 px-3 py-2 rounded-xl font-bold">⚙️ 排位進階條件</button>
               <button @click="smartRandomizeSeats()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition">🎲 智慧隨機排位</button>
               <button @click="exportSeatingToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow">📊 導出座位表 Excel</button>
-              <button @click="printSeatingChart()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl shadow">🖨️ 列印/匯出 Word</button>
+              <!-- 修改：將原本的列印改為直接導出 Word 檔 -->
+              <button @click="exportSeatingToWord()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-2 rounded-xl shadow">📄 匯出座位表 Word</button>
             </div>
           </div>
 
@@ -580,7 +578,6 @@
                     <span class="text-[10px] text-slate-400 font-mono" x-text="`R${r}-C${c}`"></span>
                   </div>
 
-                  <!-- 釘選按鈕 (獨立於拖拽) -->
                   <template x-if="getSeatStudent(r, c)">
                     <button @click.stop="togglePinSeat(r, c)" 
                             :title="isSeatPinned(r, c) ? '已釘選此座位（智慧排位時固定不動）' : '點擊釘選固定此座位'"
@@ -1724,8 +1721,53 @@ const firebaseConfig = {
           XLSX.writeFile(wb, `${this.currentClass}_課室座位表.xlsx`);
         },
 
-        printSeatingChart() {
-          window.print();
+        // 核心修改：直接將座位表匯出為 Word 檔案 (.doc)
+        exportSeatingToWord() {
+          const R = this.seatingGridRows;
+          const C = this.seatingGridCols;
+          
+          let tableRowsHtml = '';
+          for (let r = 1; r <= R; r++) {
+            tableRowsHtml += '<tr>';
+            for (let c = 1; c <= C; c++) {
+              const st = this.getSeatStudent(r, c);
+              const studentText = st ? `<b>#${st.no || '-'}</b><br><span style="font-size: 14pt;">${st.name}</span>` : '<span style="color:#aaa;">空位</span>';
+              tableRowsHtml += `<td style="border:1px solid #999; text-align:center; vertical-align:middle; height:60px; padding:8px;">${studentText}</td>`;
+            }
+            tableRowsHtml += '</tr>';
+          }
+
+          const wordHtml = `
+            <html xmlns:o='urn:schemas-microsoft-microsoft-com:office:office' 
+                  xmlns:w='urn:schemas-microsoft-microsoft-com:office:word' 
+                  xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+              <meta charset='utf-8'>
+              <title>${this.currentClass} 課室座位表</title>
+              <style>
+                body { font-family: 'Microsoft JhengHei', Arial, sans-serif; }
+                h2 { text-align: center; color: #1e293b; margin-bottom: 20px; }
+                .board { background-color: #1e293b; color: #ffffff; text-align: center; padding: 10px; font-weight: bold; border-radius: 6px; margin-bottom: 15px; }
+                table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+              </style>
+            </head>
+            <body>
+              <h2>🪑 ${this.currentClass} 班課室座位表</h2>
+              <div class="board">🖥️ 講台 / 黑板方向 (前排)</div>
+              <table>
+                ${tableRowsHtml}
+              </table>
+            </body>
+            </html>
+          `;
+
+          const blob = new Blob(['\ufeff' + wordHtml], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${this.currentClass}_課室座位表.doc`;
+          a.click();
+          URL.revokeObjectURL(url);
         },
 
         getLeftColumnStudents() {
