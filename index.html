@@ -22,7 +22,7 @@
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200"
       x-data="app()" x-init="initApp()">
 
-  <!-- 1. 未登入遮罩畫面 -->
+  <!-- 未登入遮罩畫面 -->
   <div x-show="!user" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
       <div class="text-5xl mb-2">📚</div>
@@ -59,7 +59,7 @@
           <button @click="exportJSON()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold shadow">💾 匯出 JSON</button>
           
           <button @click="toggleDarkMode()" class="bg-black/30 p-2 rounded-lg text-sm hover:bg-black/40 transition">
-            <span x-text="isDarkMode ? '☀️' : '🌙'"></span>
+            <span x-text="isDarkMode ? '☀️ Day' : '🌙 Dark'"></span>
           </button>
           <button @click="logoutGoogle()" class="bg-black/30 hover:bg-black/40 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium border border-white/20">登出</button>
         </div>
@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <!-- ==================== 1. 按功課管理頁面 ==================== -->
+      <!-- ==================== 1. 按功課管理頁面 (改為縱向2排) ==================== -->
       <div x-show="currentTab === 'homework'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -131,7 +131,7 @@
               </div>
             </div>
 
-            <!-- 作業詳細登記 -->
+            <!-- 作業詳細登記 (縱向2排：左欄 1~N/2, 右欄 N/2+1~N) -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
               <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <h3 class="text-lg font-bold flex items-center space-x-2">
@@ -155,41 +155,74 @@
                 </div>
               </div>
 
-              <!-- 縱向學生列表 -->
-              <div class="space-y-2">
-                <template x-for="(student, sIdx) in getSortedStudents()" :key="student.id">
-                  <div class="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700 transition gap-2">
-                    <div class="flex items-center space-x-3 min-w-[160px]">
-                      <span class="w-8 text-center text-xs font-bold text-slate-500 font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded-md" x-text="student.no || (sIdx + 1)"></span>
-                      <button @click="openStudentProfile(student.id)" class="font-bold text-sm hover:underline" x-text="student.name"></button>
-                    </div>
+              <!-- 雙欄縱向直排列表 -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- 左欄學生 (例如 1~5 號) -->
+                <div class="space-y-2">
+                  <template x-for="student in getLeftColumnStudents()" :key="student.id">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-8 text-center text-xs font-bold text-slate-500 font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded-md" x-text="student.no || '-'"></span>
+                        <button @click="openStudentProfile(student.id)" class="font-bold text-sm hover:underline" x-text="student.name"></button>
+                      </div>
 
-                    <div class="flex items-center space-x-1 text-xs">
-                      <button @click="setStatus(student.id, selectedHomeworkId, 'completed')" 
-                              :class="getStatus(student.id, selectedHomeworkId) === 'completed' ? 'bg-emerald-600 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'" 
-                              class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 transition">✅ 已完成</button>
-                      <button @click="setStatus(student.id, selectedHomeworkId, 'missing')" 
-                              :class="getStatus(student.id, selectedHomeworkId) === 'missing' ? 'bg-red-600 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-red-100'" 
-                              class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 transition">❌ 未交</button>
-                      <button @click="setStatus(student.id, selectedHomeworkId, 'correction')" 
-                              :class="getStatus(student.id, selectedHomeworkId) === 'correction' ? 'bg-amber-500 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-amber-100'" 
-                              class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 transition">⚠️ 待改正</button>
-                      <button @click="setStatus(student.id, selectedHomeworkId, 'pending')" 
-                              :class="getStatus(student.id, selectedHomeworkId) === 'pending' ? 'bg-orange-500 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-orange-100'" 
-                              class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 transition">⏳ 待補交</button>
-                      <button @click="setStatus(student.id, selectedHomeworkId, 'absent')" 
-                              :class="getStatus(student.id, selectedHomeworkId) === 'absent' ? 'bg-purple-600 text-white font-bold shadow' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-purple-100'" 
-                              class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 transition">🌙 缺席</button>
+                      <div class="flex items-center space-x-1 text-[11px]">
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'completed')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'completed' ? 'bg-emerald-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">✅已完成</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'missing')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'missing' ? 'bg-red-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-red-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">❌未交</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'correction')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'correction' ? 'bg-amber-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-amber-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">⚠️待改</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'pending')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'pending' ? 'bg-orange-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-orange-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">⏳待補</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'absent')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'absent' ? 'bg-purple-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-purple-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">🌙缺席</button>
+                      </div>
                     </div>
-                  </div>
-                </template>
+                  </template>
+                </div>
+
+                <!-- 右欄學生 (例如 6~10 號) -->
+                <div class="space-y-2">
+                  <template x-for="student in getRightColumnStudents()" :key="student.id">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                      <div class="flex items-center space-x-2">
+                        <span class="w-8 text-center text-xs font-bold text-slate-500 font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-0.5 rounded-md" x-text="student.no || '-'"></span>
+                        <button @click="openStudentProfile(student.id)" class="font-bold text-sm hover:underline" x-text="student.name"></button>
+                      </div>
+
+                      <div class="flex items-center space-x-1 text-[11px]">
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'completed')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'completed' ? 'bg-emerald-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-emerald-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">✅已完成</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'missing')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'missing' ? 'bg-red-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-red-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">❌未交</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'correction')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'correction' ? 'bg-amber-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-amber-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">⚠️待改</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'pending')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'pending' ? 'bg-orange-500 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-orange-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">⏳待補</button>
+                        <button @click="setStatus(student.id, selectedHomeworkId, 'absent')" 
+                                :class="getStatus(student.id, selectedHomeworkId) === 'absent' ? 'bg-purple-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-slate-600 hover:bg-purple-100'" 
+                                class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-600 transition">🌙缺席</button>
+                      </div>
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
           </div>
         </template>
       </div>
 
-      <!-- ==================== 2. 學生整體總覽 (需求 1：補齊「已完成」與「缺席」) ==================== -->
+      <!-- ==================== 2. 學生整體總覽 ==================== -->
       <div x-show="currentTab === 'overview'" class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 space-y-4">
         <h2 class="text-lg font-bold" x-text="`${currentClass} 班學生交功課整體情況`"></h2>
         <p class="text-xs text-slate-400">💡 提示：點擊姓名可開啟個人檔案；將滑鼠移動至未交數字可查看功課清單。</p>
@@ -213,7 +246,6 @@
                   <td class="py-2.5 px-3 font-mono text-slate-500" x-text="student.no || (sIdx + 1)"></td>
                   <td class="py-2.5 px-3 font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer hover:underline" @click="openStudentProfile(student.id)" x-text="student.name"></td>
                   <td class="py-2.5 px-3 font-bold text-emerald-600" x-text="getCompletedHomeworks(student.id).length"></td>
-                  <!-- 未交數量 Tooltip -->
                   <td class="py-2.5 px-3 relative group">
                     <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 cursor-pointer"
                           x-text="getMissingHomeworks(student.id).length"></span>
@@ -239,7 +271,7 @@
         </div>
       </div>
 
-      <!-- ==================== 3. 測驗成績分析 (需求 2：圖表修復；需求 3：縱向直向排序 1-5, 6-10) ==================== -->
+      <!-- ==================== 3. 測驗成績分析 (圖表穩定修復 + 縱向 2 排 1-5, 6-10) ==================== -->
       <div x-show="currentTab === 'quiz'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-3">
           <div class="flex flex-wrap items-center space-x-2">
@@ -288,7 +320,7 @@
                 </div>
               </div>
 
-              <!-- 穩定圖表容器 (需求 2：修復切換頁面後消失) -->
+              <!-- 穩定圖表容器 (修復切換頁面後消失 Bug) -->
               <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <p class="text-xs font-bold text-slate-500 mb-3">📊 全班成績等級區段分佈圖：</p>
                 <div class="h-56 w-full relative">
@@ -297,7 +329,7 @@
               </div>
             </div>
 
-            <!-- 縱向垂直貫穿分數登記 (需求 3：左欄 1-5, 右欄 6-10) -->
+            <!-- 縱向垂直貫穿分數登記 (左欄 1-5, 右欄 6-10) -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
               <h3 class="font-bold text-md mb-3" x-text="`💯 ${getSelectedQuiz().title} 分數登記`"></h3>
               
@@ -349,7 +381,7 @@
         </template>
       </div>
 
-      <!-- ==================== 4. 課室座位表 (需求 4：自訂規模 + 自由條件 + 導出 Excel & 列印) ==================== -->
+      <!-- ==================== 4. 課室座位表 ==================== -->
       <div x-show="currentTab === 'seating'" class="space-y-6">
         <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
           <div class="flex flex-wrap justify-between items-center gap-3">
@@ -367,12 +399,10 @@
             </div>
           </div>
 
-          <!-- 黑板講台方向標示 -->
           <div class="bg-slate-800 text-white text-center py-2 rounded-xl font-bold text-xs tracking-widest shadow-inner">
             🖥️ 講台 / 黑板方向 (前排)
           </div>
 
-          <!-- 動態座位網格 -->
           <div id="printableSeatingArea" class="grid gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto"
                :style="`grid-template-columns: repeat(${seatingGridCols}, minmax(110px, 1fr));`">
             <template x-for="r in seatingGridRows" :key="r">
@@ -443,13 +473,13 @@
         </table>
       </div>
 
-      <!-- ==================== 6. 設定與主題 (需求 5：自訂主題色彩卡片) ==================== -->
+      <!-- ==================== 6. 設定與主題 (恢復與新增玄黑主題) ==================== -->
       <div x-show="currentTab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- 主題色彩選擇 -->
+        <!-- 主題色彩選擇 (新增玄黑主題) -->
         <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4 lg:col-span-2">
           <h2 class="text-lg font-bold">🎨 系統主題色彩切換</h2>
-          <p class="text-xs text-slate-400">選擇您喜歡的主題風格，文字保持清晰高對比，絕不影響觀看與讀取：</p>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          <p class="text-xs text-slate-400">選擇您喜歡的主題風格（含經典黑色與高對比色系，絕不影響觀看與讀取）：</p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
             <template x-for="t in themeOptions" :key="t.key">
               <button @click="setThemeColor(t.key)" 
                       :class="currentTheme === t.key ? 'ring-4 ring-offset-2 ring-indigo-500 scale-105' : ''"
@@ -580,7 +610,7 @@
     </template>
   </div>
 
-  <!-- 彈窗 2：自訂座位行列規模 (需求 4-1) -->
+  <!-- 彈窗 2：自訂座位行列規模 -->
   <div x-show="showGridConfigModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl space-y-3">
       <h3 class="font-bold text-lg">📐 設定班房座位行列規格</h3>
@@ -600,7 +630,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 3：排位進階條件設定 (需求 4-2) -->
+  <!-- 彈窗 3：排位進階條件設定 -->
   <div x-show="showSeatingRuleModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 w-full max-w-lg shadow-2xl space-y-4">
       <h3 class="font-bold text-lg" x-text="`⚙️ 設定 ${currentClass} 班學生座位排位條件`"></h3>
@@ -626,7 +656,6 @@
               </div>
             </div>
 
-            <!-- 避開矛盾同學 -->
             <div class="text-xs">
               <span class="text-slate-400 font-medium">避開同桌同學（矛盾不相鄰）：</span>
               <div class="flex flex-wrap gap-1 mt-1">
@@ -748,7 +777,7 @@
     </div>
   </div>
 
-  <!-- JS 邏輯腳本 (單一檔案整合) -->
+  <!-- JavaScript 邏輯 -->
   <script>
 const firebaseConfig = {
   apiKey: "AIzaSyA5YYncT7-6_0O3kZh1Iq0zoreOVk2og50",
@@ -797,8 +826,10 @@ const firebaseConfig = {
         newCategoryName: '',
         quizConfig: { passPct: 60 },
 
+        // 包含新增恢復的極簡玄黑主題 (dark/obsidian)
         themeOptions: [
           { key: 'indigo', name: '經典靛藍', color: '#4f46e5', headerBg: 'bg-indigo-600 dark:bg-indigo-900', btnBg: 'bg-indigo-600 text-white shadow-md' },
+          { key: 'dark', name: '極簡玄黑', color: '#1e293b', headerBg: 'bg-slate-800 dark:bg-slate-950', btnBg: 'bg-slate-800 text-white shadow-md' },
           { key: 'sky', name: '天空湛藍', color: '#0284c7', headerBg: 'bg-sky-600 dark:bg-sky-900', btnBg: 'bg-sky-600 text-white shadow-md' },
           { key: 'emerald', name: '翡翠碧綠', color: '#059669', headerBg: 'bg-emerald-600 dark:bg-emerald-900', btnBg: 'bg-emerald-600 text-white shadow-md' },
           { key: 'purple', name: '高雅紫羅蘭', color: '#7c3aed', headerBg: 'bg-purple-600 dark:bg-purple-900', btnBg: 'bg-purple-600 text-white shadow-md' },
@@ -837,7 +868,7 @@ const firebaseConfig = {
           this.currentTab = tab;
           if (tab === 'quiz') {
             this.$nextTick(() => {
-              setTimeout(() => this.refreshChart(), 100);
+              setTimeout(() => this.refreshChart(), 120);
             });
           }
         },
@@ -1068,46 +1099,51 @@ const firebaseConfig = {
           window.print();
         },
 
+        // 修復：圖表安全重建與繪製邏輯 (解開切換消失 Bug)
         refreshChart() {
           const q = this.getSelectedQuiz();
           if (!q) return;
 
-          const canvas = document.getElementById('quizChartCanvas');
-          if (!canvas) return;
+          this.$nextTick(() => {
+            const canvas = document.getElementById('quizChartCanvas');
+            if (!canvas) return;
 
-          const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
-          const counts = [0, 0, 0, 0, 0];
+            const scores = this.currentStudents.map(s => this.getQuizScore(q.id, s.id)).filter(v => v !== '' && v !== undefined);
+            const counts = [0, 0, 0, 0, 0];
 
-          scores.forEach(s => {
-            const pct = (s / q.maxScore) * 100;
-            if (pct >= 90) counts[4]++;
-            else if (pct >= 80) counts[3]++;
-            else if (pct >= 70) counts[2]++;
-            else if (pct >= 60) counts[1]++;
-            else counts[0]++;
-          });
+            scores.forEach(s => {
+              const pct = (s / q.maxScore) * 100;
+              if (pct >= 90) counts[4]++;
+              else if (pct >= 80) counts[3]++;
+              else if (pct >= 70) counts[2]++;
+              else if (pct >= 60) counts[1]++;
+              else counts[0]++;
+            });
 
-          if (this.chartInstance) {
-            this.chartInstance.destroy();
-          }
-
-          this.chartInstance = new Chart(canvas, {
-            type: 'bar',
-            data: {
-              labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
-              datasets: [{
-                label: '人數',
-                data: counts,
-                backgroundColor: ['#ef4444', '#f59e0b', '#6366f1', '#3b82f6', '#10b981'],
-                borderRadius: 8
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            if (this.chartInstance) {
+              this.chartInstance.destroy();
+              this.chartInstance = null;
             }
+
+            const ctx = canvas.getContext('2d');
+            this.chartInstance = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: ['不及格 (<60%)', '及格 (60-69%)', '中等 (70-79%)', '良好 (80-89%)', '優秀 (≥90%)'],
+                datasets: [{
+                  label: '人數',
+                  data: counts,
+                  backgroundColor: ['#ef4444', '#f59e0b', '#6366f1', '#3b82f6', '#10b981'],
+                  borderRadius: 8
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+              }
+            });
           });
         },
 
