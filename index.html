@@ -2128,4 +2128,26 @@ const firebaseConfig = {
               row[`功課: ${hw.title}`] = st === 'completed' ? '已完成' : st === 'missing' ? '未交' : st === 'correction' ? '待改正' : st === 'pending' ? '待補交' : '缺席';
             });
             this.currentQuizzes.forEach(q => {
-              row[`測驗: ${q.title}`] = this.getQuizScore(q.id
+              row[`測驗: ${q.title}`] = this.getQuizScore(q.id, s.id);
+            });
+            return row;
+          });
+          const ws1 = XLSX.utils.json_to_sheet(hwData);
+          XLSX.utils.book_append_sheet(wb, ws1, "功課與測驗總表");
+
+          const incData = this.currentIncidents.map(i => ({
+            '日期': i.date,
+            '學生': this.getStudentName(i.studentId),
+            '事件項目': i.category,
+            '備註': i.note
+          }));
+          const ws2 = XLSX.utils.json_to_sheet(incData);
+          XLSX.utils.book_append_sheet(wb, ws2, "課堂事件紀錄");
+
+          XLSX.writeFile(wb, `課堂管理系統報表_${this.currentClass}.xlsx`);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
